@@ -10,12 +10,21 @@
 
 
 #define KING_VALUE 25000
+/*
 #define PAWN_VALUE 100
 #define KNIGHT_VALUE 320
 #define BISHOP_VALUE 330
 #define ROOK_VALUE 500
 #define QUEEN_VALUE 900
 #define KING_CASTLING_BONUS 15
+*/
+#define PAWN_VALUE 100
+#define KNIGHT_VALUE 420
+#define BISHOP_VALUE 428
+#define ROOK_VALUE 643
+#define QUEEN_VALUE 1283
+#define KING_CASTLING_BONUS 15
+
 
 #define LOGGING
 #define INF (1<<28)
@@ -848,7 +857,7 @@ const PieceSquareTable PawnSquareTableD =
 	//A8                                H8
 };
 
-#define END_PAWN_SCALE /2
+#define END_PAWN_SCALE +30
 const PieceSquareTable EndgamePawnSquareTableL =
 {
 	0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE,
@@ -1261,14 +1270,14 @@ struct Move
 */
 		if (!SideInEndgame(my_side)) {
 			int material_threat = MaterialSums[other_side][MAJOR_MINOR_COUNT];
-			if (castling != NotCastling) {
+			if (castling == NotCastling) {
 				if (initial == KING_NOT_MOVED || initial == ROOK_NOT_MOVED) {
 					switch (ways_can_castle(color(Board[from]))) {
-					case 1: bonus -= 30* material_threat>>12; break;
-					case 2: if (initial == KING_NOT_MOVED) bonus -= 60 * material_threat >> 12; else bonus -= 30 * material_threat >> 12;
+					case 1: bonus -= 30* material_threat>>11; break;
+					case 2: if (initial == KING_NOT_MOVED) bonus -= 60 * material_threat >> 11; else bonus -= 30 * material_threat >> 11;
 					}
 				}
-				else if (became == KING || became == KING_CASTLED) bonus -= 5* material_threat >> 12;;
+				else if (became == KING || became == KING_CASTLED) bonus -= 5* material_threat >> 11;
 			}
 		}
 	}
@@ -1566,9 +1575,10 @@ struct RepeatListStruct {
 		bin_history[history++] = bin;
 		assert(bins[bin_history[history - 1]].back() == Hash);
 	}
-	void add()
+	void add(Colors c)
 	{
-		add(Hash);
+		if (PlySide() != c) add(Hash ^ LightHash);
+		else add(Hash);
 	}
 
 	void remove()
@@ -1589,8 +1599,9 @@ struct RepeatListStruct {
 			bin = ((bin + 1) & (REPEAT_BINS - 1));
 		} while (true);
 	}
-	int count()
+	int count(Colors c)
 	{
+		if (PlySide() != c) return count(Hash ^ LightHash);
 		return count(Hash);
 	}
 
@@ -1686,12 +1697,17 @@ int eval_king(Pos kc, Colors c, Colors o)
 int mobility(PieceSlotType s);
 int calc_pins(Colors c, Pos root_pos, PieceSlotType *pins, PieceSlotType *pinner);
 
+int LowestPassed[NUM_COLORS];
+
+bool Threatened(Colors c, Pos p);
+
 void calc_pawns()
 {
 	PawnsDirty = false;
 	for (int i = PAWN1;i < NUM_PIECE_SLOTS;++i) Players.pinned[i] = NotPinned;
 	PawnsTemp[LIGHT] = PawnsTemp[DARK] = 0;
 	for (int c = LIGHT;c < NUM_COLORS;++c) {
+		LowestPassed[c] = 0;
 		for (int r = PAWN1;r <= PAWN8 + 2;++r) {
 			PawnsRank[c][r] = 0;
 		}
@@ -1730,8 +1746,11 @@ void calc_pawns()
 				if (PawnsRank[c][col] != pr) PawnsTemp[c] -= 10;//double pawn penalty
 				if (PawnsRank[c][col - 1] == 0 && PawnsRank[c][col + 1] == 0) PawnsTemp[c] -= 20; //isolated pawn penalty
 				else if (PawnsRank[c][col - 1] < pr && PawnsRank[c][col + 1] < pr) PawnsTemp[c] -= 8; //backward pawn penalty
-				if (9 - PawnsRank[oc][col - 1] >= pr && 9 - PawnsRank[oc][col] >= pr && 9 - PawnsRank[oc][col + 1] >= pr) PawnsTemp[c] += //pawn_tables[c][pp] + 9;//
-					(7 - pr) * 10;
+				if (9 - PawnsRank[oc][col - 1] >= pr && 9 - PawnsRank[oc][col] >= pr && 9 - PawnsRank[oc][col + 1] >= pr) {
+					PawnsTemp[c] += //pawn_tables[c][pp] + 9;//
+						(7 - pr) * 10;
+					if (LowestPassed[c] < pr) LowestPassed[c] = pr;//calculate nearest passed pawn for bonus for rook on other side of passed pawn
+				}
 			}
 		}
 		//		*/
@@ -1744,7 +1763,8 @@ void calc_pawns()
 				if (PawnsRank[c][rook_col] == 0)
 					if (PawnsRank[oc][rook_col] == 0) PawnsTemp[c] += 15;//open file
 					else PawnsTemp[c] += 10; //semi open
-				if (RankCalc[c][rook_pos] == 1)PawnsTemp[c] += 20;//rook attacking last row
+					if (RankCalc[c][rook_pos]<LowestPassed[c]) PawnsTemp[c] += 35;
+					else if (RankCalc[c][rook_pos] == 1)PawnsTemp[c] += 20;//rook attacking last row
 			}
 		}
 
@@ -2026,7 +2046,7 @@ void Move::make()
 	//	if (taken_at != to) {
 	//		printf("move %s to %s taking at %s\n", PosToStandard[from], PosToStandard[to], PosToStandard[taken_at]);
 	//	}
-/*
+///*
 	if (MoveNumber + history_len > 1
 		&& Players.pieces[Board[En_passant_history[MoveNumber + history_len - 2]]] == PAWN_JUST_ADVANCED) {
 		update_hash(Board[En_passant_history[MoveNumber + history_len - 2]]);
@@ -2035,7 +2055,7 @@ void Move::make()
 		//		cout << "- "<< MoveNumber + history_len - 2<<" " <<PosToStandard[En_passant_history[MoveNumber + history_len - 2]];
 		board_consistent();
 	}
-*/
+//*/
 	if (became == PAWN_JUST_ADVANCED) {
 		En_passant_history[MoveNumber + history_len] = to;
 //		cout << "* "<< MoveNumber + history_len << " " <<PosToStandard[to];
@@ -2109,7 +2129,7 @@ void Move::make()
 	//if (is_pawn(initial) || is_king(initial) || is_pawn(piece_taken)) 
 		PawnsDirty = true;
 
-	RepeatList.add();
+	RepeatList.add(color(slot_moving));
 	board_consistent();
 }
 
@@ -2177,7 +2197,7 @@ void Move::unmake()
 		}
 		break;
 	}
-/*
+///*
 	if (MoveNumber + history_len > 1
 		&& Players.pieces[Board[En_passant_history[MoveNumber + history_len - 2]]] == PAWN) {
 		update_hash(Board[En_passant_history[MoveNumber + history_len - 2]]);
@@ -2185,7 +2205,7 @@ void Move::unmake()
 		update_hash(Board[En_passant_history[MoveNumber + history_len - 2]]);
 		//		cout << "+ " << MoveNumber + history_len - 2 << " " << PosToStandard[En_passant_history[MoveNumber + history_len - 2]];
 	}
-*/
+//*/
 	//	assert(hash == Hash);
 	//if (is_pawn(initial) || is_king(initial) || is_pawn(piece_taken)) 
 		PawnsDirty = true;
@@ -2210,8 +2230,6 @@ bool right_rook_moved(Colors c)
 	const PieceSlotType rook = (PieceSlotType)(base_by_color(c) + ROOK2);
 	return Players.pieces[rook] != ROOK_NOT_MOVED;
 }
-
-bool Threatened(Colors c, Pos p);
 
 bool can_castle_left(Colors c)
 {
@@ -2758,17 +2776,19 @@ do { \
 
 int Enpassants = 0;
 
-//#define PAWNQPOINT(direction,d2) \
+#define PAWNQPOINT(direction,d2) \
 	enpassant_pos = root_pos+d2;\
 	if (\
 		PAWN_JUST_ADVANCED == Players.pieces[Board[enpassant_pos]] \
 		&& color(Board[enpassant_pos]) != c \
 		&& Board[root_pos + direction] == NO_SLOT ) {\
-			Captures.push(Move(root_pos, root_pos+direction, enpassant_pos, Move::DoEnpassant ATLINE),PAWN_VALUE<<10); \
+			CAPTURE_VALUATION((root_pos,root_pos+direction , enpassant_pos, Move::DoEnpassant ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[enpassant_pos]]])-value)) \
 			++Enpassants; \
 		}\
+	else if (Board[root_pos+direction] != NO_SLOT && Board[root_pos+direction] != OFF_BOARD && color(Board[root_pos+direction]) != c) \
+		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]])-value)) 
 
-#define PAWNQPOINT(direction,d2) \
+//#define PAWNQPOINT(direction,d2) \
 	if (Board[root_pos+direction] != NO_SLOT && Board[root_pos+direction] != OFF_BOARD && color(Board[root_pos+direction]) != c) \
 		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]])-value)) 
 
@@ -3508,6 +3528,12 @@ int calc_pins(Colors c, Pos root_pos, PieceSlotType *pins, PieceSlotType *pinner
 #define REV_POS(direction,piece) \
 if (is_piece((Pos)(root_pos+direction)) && color(Board[root_pos+direction]) != c && ComparisonPiece[Players.pieces[Board[root_pos+direction]]]==piece) return true;
 
+
+
+#define WEIGHT_REV_POS(direction,piece) \
+if (is_piece((Pos)(root_pos+direction)) && color(Board[root_pos+direction]) != c && ComparisonPiece[Players.pieces[Board[root_pos+direction]]]==piece) return true;
+
+
 #define REV_PAWN \
 	if (c==LIGHT) {REV_POS(-9,PAWN);REV_POS(-11,PAWN);} else {REV_POS(9,PAWN);REV_POS(11,PAWN); }
 
@@ -3648,16 +3674,18 @@ void add_killer(Move &m)
 bool get_killers(Move **dest, int &i)
 {
 	if (i < 4) {
-		while (BestMovePerPly[i][CurrentPly].empty() && i < 4) ++i;
+		int b = BestMovePerPlyIndex[CurrentPly];
+		while (BestMovePerPly[(b-i)&3][CurrentPly].empty() && i < 4) ++i;
 		if (i != 4) {
-			*dest = &BestMovePerPly[i++][CurrentPly];
+			*dest = &BestMovePerPly[(b-i++)&3][CurrentPly];
 			return true;
 		}
 	}
 	if (i < 8 && CurrentPly > 1) {
-		while (BestMovePerPly[i-4][CurrentPly-2].empty() && i < 8) ++i;
+		int b = BestMovePerPlyIndex[CurrentPly];
+		while (BestMovePerPly[(b-(i-4))&3][CurrentPly-2].empty() && i < 8) ++i;
 		if (i != 8) {
-			*dest = &BestMovePerPly[(i++)-4][CurrentPly-2];
+			*dest = &BestMovePerPly[(b-((i++)-4))&3][CurrentPly-2];
 			return true;
 		}
 	}
@@ -3807,10 +3835,11 @@ int _perft(int d)
 	GenMoves(other_color(PlySide()));
 	if (d != 1) Enpassants = e;
 	while (!MovesOrdered.empty()) {
+		int e_2 = Enpassants;
 		MovesOrdered.back().make();
 		if (king_in_check(other_color(PlySide()))) {//illegal to make a move that leaves your king in check
 			MovesOrdered.back().unmake();
-			Enpassants = e;
+			Enpassants = e_2;
 			MovesOrdered.pop();
 			continue;
 		}
@@ -3954,6 +3983,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null)
 	if (d == 0) {
 		NumPinMoves[PlySide()] = 0;
 	}
+	Colors my_color = PlySide();
 	HashTableEntry *n=nullptr;
 	Move m2;
 //	if (d>0)
@@ -3968,8 +3998,8 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null)
 		if (!m2.empty()) {
 			inc_ply();
 			m2.make();
-			hash_move_repeat = !somewhere_in_null && RepeatList.count() >= 3;
-			if (hash_move_repeat) upper = lower = 0;
+			hash_move_repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
+			if (hash_move_repeat) upper = lower = -n->get_eval()>>1;
 			m2.unmake();
 			dec_ply();
 		}
@@ -4030,7 +4060,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null)
 			!in_check &&
 			CheckForEndgame && 
 			d > 1 &&
-			(somewhere_in_null || RepeatList.count() < 2)
+			(somewhere_in_null || RepeatList.count(my_color) < 2)
 			) {
 			inc_ply();
 			int new_value;
@@ -4069,24 +4099,41 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null)
 		Move c;
 		Move best_move;
 		MoveGenerator &moves = MoveGenerators[CurrentPly];
-		moves.init(d,m2);
+		moves.init(in_check?1:d,m2);
 		g = -INF; a = alpha; /* save original alpha value */
 		inc_ply();
 		while ((g < beta) && moves.next(c)) {
 			//moves.next calls c.make()
-			bool repeat = !somewhere_in_null && RepeatList.count() >= 3;
+			bool repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
 			try {
 				int val;
-				if (repeat) val = 0;
-				else if (a==beta-1) {
+				if (repeat) val = -val>>1;
+				else if (a==beta-1 || (a==-INF && beta==INF) ) {
 					val = -NegaScout(-beta, -a, d - 1,false, somewhere_in_null);
 				}
 				else {
-					val = -NegaScout(-(a+1), -a, d - 1,false, somewhere_in_null);
-					if (val > a && val < beta) {
-						int val2 = -NegaScout(-beta, -beta+1, d - 1, false, somewhere_in_null);
-						if (val2<beta && val2!=val) val = -NegaScout(-val2, -val, d - 1, false, somewhere_in_null);
+					if (a == -INF) {
+						val = -NegaScout(-beta, -beta + 1, d - 1, false, somewhere_in_null);
+						if (val<beta) val = -NegaScout(-val, -a, d - 1, false, somewhere_in_null);
+					}
+					else {
+						int val2;
+						val2 = -NegaScout(-beta, -beta + 1, d - 1, false, somewhere_in_null);
+						if (val2 < beta) {
+							val = -NegaScout(-(a + 1), -a, d - 1, false, somewhere_in_null);
+							if (val > a && val2 > val) {
+								val = -NegaScout(-val2, -val, d - 1, false, somewhere_in_null);
+							}
+						}
 						else val = val2;
+						/*
+						val = -NegaScout(-(a + 1), -a, d - 1, false, somewhere_in_null);
+						if (val > a && val < beta) {
+							int val2 = -NegaScout(-beta, -beta + 1, d - 1, false, somewhere_in_null);
+							if (val2<beta && val2>val) val = -NegaScout(-val2, -val, d - 1, false, somewhere_in_null);
+							else val = val2;
+*/
+						
 					}
 				}
 				if (val > g) {
@@ -4118,7 +4165,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null)
 			if (in_check) return -KING_VALUE-d-QUIESCENT_DEPTH;//includes waiting penalty
 			return 0;
 		}
-		if (SufficientPieces == 0 && MinorPieces[LIGHT] < 2 && MinorPieces[DARK] < 2) return 0;
+		if (SufficientPieces == 0 && MinorPieces[LIGHT] < 2 && MinorPieces[DARK] < 2) return -g>>1;
 	}
 
 	if (n != nullptr)
@@ -4147,7 +4194,7 @@ int MTDF(int g, int d)
 		int beta;
 		if (g == lowerbound) beta = g + 1; else beta = g;
 		assert(CurrentPly == 0);
-		g = AlphaBetaWithMemory(beta - 1, beta, d);
+		g = NegaScout(beta - 1, beta, d,false,false);
 		assert(CurrentPly == 0);
 		if (g < beta) upperbound = g; else lowerbound = g;
 	}while(lowerbound < upperbound);
