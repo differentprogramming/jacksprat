@@ -2996,6 +2996,7 @@ public:
 		eval_copy = INF;
 		upper_exact = lower_exact = false;
 	}
+
 	int get_eval()
 	{
 		if (upper_exact) {
@@ -3005,7 +3006,7 @@ public:
 			}
 		}
 		if (lower_exact) return lower_bound;
-		if (upper_bound_depth != -127 &&  upper_bound == lower_bound) return lower_bound;
+		if (upper_bound_depth != -127 &&  abs(upper_bound - lower_bound)<PAWN_VALUE) return (upper_bound +lower_bound)>>1;
 //		if (upper_bound_depth == lower_bound_depth) return upper_bound;
 		if (eval_copy != INF) return eval_copy;
 		if (upper_bound_depth != -127 && lower_bound_depth != -127) return (upper_bound + lower_bound) >> 1;
@@ -3050,6 +3051,28 @@ HashTableEntry * GetHash(bool q)
 	return nullptr;
 }
 
+int get_order_eval(bool &is_score, Colors c, int depth)
+{
+	HashTableEntry *e = nullptr;
+	if (depth>=0) e=GetHash(false);
+	if (e != nullptr) {
+		if (e->lower_bound_depth != -127 && e->upper_bound_depth != -127) {
+			is_score = true;
+			return -(e->lower_bound + e->upper_bound) >> 1;
+		}
+	}
+	HashTableEntry *eq = nullptr;
+	if (depth<=1) eq = GetHash(true);
+	if (eq != nullptr) {
+		if (eq->lower_bound_depth != -127 && eq->upper_bound_depth != -127) {
+			is_score = true;
+			return -(eq->lower_bound + eq->upper_bound) >> 1;
+		}
+	}
+	is_score = false;
+	return 0;
+}
+
 HashTableEntry * GetOrMakeHash(bool q)
 {
 	const int hoff = q ? HASH_LEN : 0;
@@ -3074,52 +3097,70 @@ bool dec_ply();
 
 int QUIESCENT_DEPTH;
 
-bool order_value(int &result, Colors c,Move &m)
+bool order_value(int &result, Colors c,Move &m, int depth)
 {
-	result = 0;
-	return false;
+//	result = 0;
+//	return false;
 	m.make();
+	//int get_order_eval(bool &is_score, Colors c)
 //	set_PlySide(other_color(PlySide()));
-	HashTableEntry *e = GetHash(false);
-//	set_PlySide(other_color(PlySide()));
+	bool found = false;
+	if (depth < 4 - QUIESCENT_DEPTH) result = 0;
+	else result = get_order_eval(found, c, depth)<<9;
 	m.unmake();
-	if (e == nullptr) {
-		result = eval(c)<<17;
-		return false;
-	}
-	const int l = e->get_lower(-(QUIESCENT_DEPTH>>1));
-	if (l == -INF) {
-		result = eval(c) << 17;
-		return false;
-	}
-	result = -l<<17;
-	return true;
+	return found;
 }
 
 #define LAST_MOVED_BONUS KING_VALUE
 #define GENERATE_TO MovesOrdered
 
 
-#define CAP_SCALE(x,y) (((x)<<10)-(y))
-//#define CAP_SCALE(x,y) (x)
+//#define CAP_SCALE(x,y) (((x)<<10)-(y))
+#define CAP_SCALE(x,y) ((x)<<10)
 bool ThreatenedExcluding(Colors o, Pos root_pos, PieceSlotType exclude);
 int SEE(Colors c, Pos root_pos, PieceSlotType exclude, int depth);
-#define COUNTER(c,expanding,attacker,value) -SEE(c,expanding,attacker,INF)
+#define COUNTER(c,expanding,attacker,value) (-SEE(c,expanding,attacker,INF))
 //#define COUNTER(c,expanding,attacker,value) ThreatenedExcluding(c,expanding,attacker)?value:0
 // square_value - positive_square_value_of_piece(c, piece_type, expanding) ));
+#define CAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
+		Move m MOVE_PARAMS;\
+		int v; \
+		const bool found = order_value(v,c,m, depth);\
+		GENERATE_TO.push(m,found?v:(v+(val<<10)+(MVV_LVA)));\
+	} 
+/*
+
+#define NONCAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
+		Move m MOVE_PARAMS;\
+		int v; \
+		const bool found = order_value(v,c,m, depth);\
+		GENERATE_TO.push(m,found?v:(v+(val<<10)+(MVV_LVA)));\
+	} 
+*/
+/*
+#define CAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
+		Move m MOVE_PARAMS;\
+		GENERATE_TO.push(m,(val<<10)+(MVV_LVA));\
+	} 
+*/
+#define NONCAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
+		Move m MOVE_PARAMS;\
+		GENERATE_TO.push(m,(val<<9)+(MVV_LVA));\
+	} 
+
+
+#define QUIET_VALUE -KING_VALUE
 
 #define SLIDE(direction) \
 expanding = root_pos ;\
 do { \
 	expanding+=direction;\
 	if (Board[expanding] == NO_SLOT) { \
-		GENERATE_TO.push(Move(root_pos,expanding ATLINE),CAP_SCALE(-KING_VALUE,square_value - positive_square_value_of_piece(c, piece_type, expanding) )); \
+		NONCAPTURE_VALUATION((root_pos,expanding ATLINE),CAP_SCALE(QUIET_VALUE,square_value - positive_square_value_of_piece(c, piece_type, expanding) ));\
 		continue; \
 	}\
 	if (Board[expanding] != OFF_BOARD && color(Board[expanding]) != c) { \
-		Move m(root_pos,expanding ATLINE);\
-		const int counter = COUNTER(c,expanding,attacker,value);\
-		GENERATE_TO.push(m,CAP_SCALE(ValuePerPiece[Players.pieces[Board[expanding]]]-counter,value));\
+		CAPTURE_VALUATION((root_pos,expanding ATLINE),CAP_SCALE(ValuePerPiece[Players.pieces[Board[expanding]]]-COUNTER(c,expanding,attacker,value),value));\
 	} \
 	break; \
 } while (true)
@@ -3133,21 +3174,14 @@ do { \
 		return Move();\
 	}
 
-#define CAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
-		Move m MOVE_PARAMS;\
-		int v; \
-		const bool found = order_value(v,c,m);\
-		GENERATE_TO.push(m,found?v:(v+ MVV_LVA));\
-	} 
 
 //
 //square_value - positive_square_value_of_piece(c, piece_type, root_pos+direction)
 #define POINT(direction) \
 	if (Board[root_pos+direction] == NO_SLOT) { \
-		GENERATE_TO.push(Move(root_pos,root_pos+direction ATLINE),CAP_SCALE(-KING_VALUE,square_value - positive_square_value_of_piece(c, piece_type, root_pos+direction)));\
+		NONCAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(QUIET_VALUE,square_value - positive_square_value_of_piece(c, piece_type, root_pos+direction)))); \
 	} else if (Board[root_pos+direction] != OFF_BOARD && color(Board[root_pos+direction]) != c){ \
-		const int counter = COUNTER(c,root_pos+direction,attacker,value);\
-		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]]-counter,value))); \
+		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]]-COUNTER(c,root_pos+direction,attacker,value),value))); \
 	}
 
 #define TPPOINT(direction) \
@@ -3160,13 +3194,13 @@ do { \
 
 #define PPOINT(direction) \
 	if (Board[root_pos+direction] == NO_SLOT) { \
-		GENERATE_TO.push(Move(root_pos,root_pos+direction ATLINE),CAP_SCALE(-KING_VALUE,square_value -positive_square_value_of_piece(c, piece_type, root_pos) + direction));\
+		NONCAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),CAP_SCALE(QUIET_VALUE,square_value -positive_square_value_of_piece(c, piece_type, root_pos) + direction));\
 	}
 
 
 #define PPOINT_DOUBLE(direction) \
 	if (Board[root_pos+direction] == NO_SLOT && Board[root_pos+(direction>>1)] == NO_SLOT) { \
-		GENERATE_TO.push(Move(root_pos,root_pos+direction, PAWN_JUST_ADVANCED ATLINE),CAP_SCALE(-KING_VALUE,square_value -positive_square_value_of_piece(c, piece_type, root_pos) + direction));\
+		NONCAPTURE_VALUATION((root_pos,root_pos+direction, PAWN_JUST_ADVANCED ATLINE),CAP_SCALE(QUIET_VALUE,square_value -positive_square_value_of_piece(c, piece_type, root_pos) + direction)); \
 	}
 
 #define TPPOINT_DOUBLE(direction) \
@@ -3244,8 +3278,7 @@ int Enpassants = 0;
 
 #define QPOINT(direction) \
 	if (Board[root_pos+direction] != NO_SLOT && Board[root_pos+direction] != OFF_BOARD && color(Board[root_pos+direction]) != c) {\
-		const int counter = COUNTER(c,root_pos+direction,attacker,value);\
-		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]]-counter,value)));\
+		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]]-COUNTER(c,root_pos+direction,attacker,value),value)));\
 	}
 
 
@@ -3283,7 +3316,7 @@ Move test_pawn_moves(const Colors c, const Pos root_pos, const Pos target, const
 }
 
 
-void generate_pawn_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void generate_pawn_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const PieceType piece_type = PAWN;
 	const int square_value = positive_square_value_of_piece(c, piece_type, root_pos);
@@ -3327,7 +3360,7 @@ Move test_knight_moves(const Colors c, const Pos root_pos, const Pos target, con
 	return Move();
 }
 
-void generate_knight_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void generate_knight_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const int value = KNIGHT_VALUE;
 	const PieceType piece_type = KNIGHT;
@@ -3352,7 +3385,7 @@ Move test_king_moves(const Colors c, const Pos root_pos, const Pos target, const
 }
 
 
-void generate_king_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void generate_king_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const PieceType piece_type = KING;
 	const int square_value = positive_square_value_of_piece(c, piece_type, root_pos);
@@ -3382,7 +3415,7 @@ Move test_king_castle_moves(const Colors c, const Pos root_pos, const Pos target
 
 int Castles = 0;
 
-void generate_king_castle_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void generate_king_castle_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	if (can_castle_left(c)) {
 		if (c == LIGHT) GENERATE_TO.push(Move(e1, c1, Move::CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS,0));
@@ -3394,7 +3427,7 @@ void generate_king_castle_moves(const Colors c, const Pos root_pos, PieceSlotTyp
 		else GENERATE_TO.push(Move(e8, g8, Move::CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS,0));
 		++Castles;
 	}
-	generate_king_moves(c, root_pos, attacker);
+	generate_king_moves(c, root_pos, attacker, val, depth);
 }
 
 
@@ -3489,7 +3522,7 @@ int mobility(PieceSlotType s)
 	return CountMoveTable[Players.pieces[s]](color(s), Players.positions[s]);
 }
 
-void generate_queen_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void generate_queen_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const PieceType piece_type = QUEEN;
 	const int square_value = positive_square_value_of_piece(c, piece_type, root_pos);
@@ -3515,7 +3548,7 @@ Move test_rook_moves(const Colors c, const Pos root_pos, const Pos target, const
 	return Move();
 }
 
-void generate_rook_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void generate_rook_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const PieceType piece_type = ROOK;
 	const int square_value = positive_square_value_of_piece(c, piece_type, root_pos);
@@ -3537,7 +3570,7 @@ Move test_bishop_moves(const Colors c, const Pos root_pos, const Pos target, con
 	return Move();
 }
 
-void generate_bishop_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void generate_bishop_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const PieceType piece_type = BISHOP;
 	const int square_value = positive_square_value_of_piece(c, piece_type, root_pos);
@@ -3558,13 +3591,12 @@ do { \
 		continue; \
 	}\
 	if (Board[expanding] != OFF_BOARD && color(Board[expanding]) != c){ \
-		const int counter = COUNTER(c,expanding,attacker,value);\
-		GENERATE_TO.push(Move(root_pos,expanding ATLINE),CAP_SCALE(ValuePerPiece[Players.pieces[Board[expanding]]]-counter,value));\
+		GENERATE_TO.push(Move(root_pos,expanding ATLINE),CAP_SCALE(ValuePerPiece[Players.pieces[Board[expanding]]]-COUNTER(c,expanding,attacker,value),value));\
 	}\
 	break; \
 } while (true)
 
-void quiesent_generate_pawn_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void quiesent_generate_pawn_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	Pos enpassant_pos;
 	const int value = PAWN_VALUE;
@@ -3593,7 +3625,7 @@ void quiesent_generate_pawn_moves(const Colors c, const Pos root_pos, PieceSlotT
 }
 
 
-void quiesent_generate_knight_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void quiesent_generate_knight_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const int value = KNIGHT_VALUE;
 	QPOINT(-21);
@@ -3607,7 +3639,7 @@ void quiesent_generate_knight_moves(const Colors c, const Pos root_pos, PieceSlo
 }
 
 
-void quiesent_generate_king_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void quiesent_generate_king_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const int value = KING_VALUE;
 	QPOINT(-11);
@@ -3621,7 +3653,7 @@ void quiesent_generate_king_moves(const Colors c, const Pos root_pos, PieceSlotT
 }
 
 
-void quiesent_generate_queen_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void quiesent_generate_queen_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	Pos expanding;
 	const int value = QUEEN_VALUE;
@@ -3635,7 +3667,7 @@ void quiesent_generate_queen_moves(const Colors c, const Pos root_pos, PieceSlot
 	QSLIDE(11);
 }
 
-void quiesent_generate_rook_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void quiesent_generate_rook_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	Pos expanding;
 	const int value = ROOK_VALUE;
@@ -3645,7 +3677,7 @@ void quiesent_generate_rook_moves(const Colors c, const Pos root_pos, PieceSlotT
 	QSLIDE(10);
 }
 
-void quiesent_generate_bishop_moves(const Colors c, const Pos root_pos, PieceSlotType attacker)
+void quiesent_generate_bishop_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	Pos expanding;
 	const int value = BISHOP_VALUE;
@@ -3655,7 +3687,7 @@ void quiesent_generate_bishop_moves(const Colors c, const Pos root_pos, PieceSlo
 	QSLIDE(11);
 }
 
-typedef void GenMoveFn(const Colors, const Pos, PieceSlotType attacker);
+typedef void GenMoveFn(const Colors, const Pos, PieceSlotType attacker, int val, int depth);
 typedef Move TestMoveFn(const Colors c, const Pos root_pos, const Pos target, const PieceType promotion);
 
 /*enum PieceType : signed char {
@@ -3673,7 +3705,7 @@ typedef Move TestMoveFn(const Colors c, const Pos root_pos, const Pos target, co
 	NUM_PIECE_TYPES = 11,
 };*/
 
-void generate_empty_moves(const Colors, const Pos, PieceSlotType attacker) {}
+void generate_empty_moves(const Colors, const Pos, PieceSlotType attacker, int val, int depth) {}
 Move test_empty_moves(const Colors, const Pos, const Pos, const PieceType) { return Move();  }
 
 TestMoveFn* TestMoveTable[NUM_PIECE_TYPES] =
@@ -3763,29 +3795,29 @@ Move TestMove(Colors c, PieceSlotType p, Pos target, PieceType promotion)
 	return TestMoveTable[Players.pieces[p]](c, Players.positions[p], target, promotion);
 }
 
-void GenMove(PieceSlotType p)
+void GenMove(PieceSlotType p, int val, int depth)
 {
 //	if (Players.pieces[p] == EMPTY) return;
-	GenMoveTable[Players.pieces[p]](color(p), Players.positions[p],p);
+	GenMoveTable[Players.pieces[p]](color(p), Players.positions[p],p, val, depth);
 }
 
-void QGenMove(PieceSlotType p)
+void QGenMove(PieceSlotType p, int val, int depth)
 {
 //	if (Players.pieces[p] == EMPTY) return;
-	QGenMoveTable[Players.pieces[p]](color(p), Players.positions[p],p);
+	QGenMoveTable[Players.pieces[p]](color(p), Players.positions[p],p, val, depth);
 }
 
-void GenMoves(PieceSlotType p)
+void GenMoves(PieceSlotType p, int val, int depth)
 {
-	GenMove(p);
+	GenMove(p,val,depth);
 //	MovesOrdered.push_list(VanillaMoves);
 //	MovesOrdered.push_list(Captures);
 }
 
-int GenPinMoves(Colors c, int &num_pin_move, Pos *prev_pin_moves)
+int GenPinMoves(Colors c, int &num_pin_move, Pos *prev_pin_moves, int val, int depth)
 {
 	const int start_index = MovesOrdered.index();
-	GenMoves((PieceSlotType)(KINGP + base_by_color(c)));
+	GenMoves((PieceSlotType)(KINGP + base_by_color(c)),val,depth);
 	const int end_index = MovesOrdered.index();
 	for (int i = start_index;i < end_index;++i) {
 		for (int j = 0;j < num_pin_move;++j) {
@@ -3801,9 +3833,9 @@ int GenPinMoves(Colors c, int &num_pin_move, Pos *prev_pin_moves)
 	}
 	return count_pin_moves;
 }
-void QGenMoves(PieceSlotType p)
+void QGenMoves(PieceSlotType p, int val, int depth)
 {
-	QGenMove(p);
+	QGenMove(p,val, depth);
 //	MovesOrdered.push_list(VanillaMoves);
 //	MovesOrdered.push_list(Captures);
 }
@@ -3824,18 +3856,18 @@ bool LazyGenMove(int &i, bool quiescent, Colors c, Move *killer_moves, int num_k
 	return true;
 }
 */
-void GenMoves(Colors c)
+void GenMoves(Colors c, int val, int depth)
 {
 	PieceSlotType base = base_by_color(c);
-	for (int i = PAWN1;i < NUM_UNCOLORED_PIECE_SLOTS;++i) GenMove((PieceSlotType)(i + base));
+	for (int i = PAWN1;i < NUM_UNCOLORED_PIECE_SLOTS;++i) GenMove((PieceSlotType)(i + base), val,depth);
 //	MovesOrdered.push_list(VanillaMoves);
 //	MovesOrdered.push_list(Captures);
 }
 
-void QGenMoves(Colors c)
+void QGenMoves(Colors c, int val, int depth)
 {
 	PieceSlotType base = base_by_color(c);
-	for (int i = PAWN1;i < NUM_UNCOLORED_PIECE_SLOTS;++i) QGenMove((PieceSlotType)(i + base));
+	for (int i = PAWN1;i < NUM_UNCOLORED_PIECE_SLOTS;++i) QGenMove((PieceSlotType)(i + base), val,depth);
 //	MovesOrdered.push_list(VanillaMoves);
 //	MovesOrdered.push_list(Captures);
 }
@@ -3915,8 +3947,7 @@ do { \
 			case BISHOP:\
 			{ \
 				Move m(expanding,root_pos ATLINE);\
-				const int counter = COUNTER(c,root_pos,Board[expanding],ValuePerPiece[Players.pieces[Board[expanding]]]);\
-				MovesOrdered.push(m,CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos]]]-counter,ValuePerPiece[Players.pieces[Board[expanding]]]));\
+				MovesOrdered.push(m,CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos]]]-COUNTER(c,root_pos,Board[expanding],ValuePerPiece[Players.pieces[Board[expanding]]]),ValuePerPiece[Players.pieces[Board[expanding]]]));\
 				stop = true;\
 			} \
 		}\
@@ -3938,8 +3969,7 @@ do { \
 			case ROOK_NOT_MOVED: case ROOK:\
 			{ \
 				Move m(expanding,root_pos ATLINE);\
-				const int counter = COUNTER(c,root_pos,Board[expanding],ValuePerPiece[Players.pieces[Board[expanding]]]);\
-				MovesOrdered.push(m,CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos]]]-counter,ValuePerPiece[Players.pieces[Board[expanding]]]));\
+				MovesOrdered.push(m,CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos]]]-COUNTER(c,root_pos,Board[expanding],ValuePerPiece[Players.pieces[Board[expanding]]]),ValuePerPiece[Players.pieces[Board[expanding]]]));\
 				stop = true;\
 			} \
 		}\
@@ -3948,8 +3978,7 @@ do { \
 
 #define REV_GEN_POS(direction,piece) \
 if (is_piece((Pos)(root_pos+direction)) && color(Board[root_pos+direction]) != c && ComparisonPiece[Players.pieces[Board[root_pos+direction]]]==piece) {\
-		const int counter = COUNTER(c,root_pos,Board[root_pos+direction],ValuePerPiece[Players.pieces[Board[root_pos+direction]]]);\
-		CAPTURE_VALUATION((root_pos+direction, root_pos ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos]]]-counter,ValuePerPiece[Players.pieces[Board[root_pos+direction]]])));\
+		CAPTURE_VALUATION((root_pos+direction, root_pos ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos]]]-COUNTER(c,root_pos,Board[root_pos+direction],ValuePerPiece[Players.pieces[Board[root_pos+direction]]]),ValuePerPiece[Players.pieces[Board[root_pos+direction]]])));\
 }
 
 #define REV_GEN_PAWN \
@@ -4230,7 +4259,7 @@ bool Threatened(Colors c, Pos root_pos)
 	return false;
 }
 
-bool GenThreat(int &i, Colors c, Pos root_pos)
+bool GenThreat(int &i, Colors c, Pos root_pos, int val, int depth)
 {
 	int expanding;
 	bool stop;
@@ -4692,8 +4721,11 @@ struct MoveGenerator
 	int count_positive;
 	PieceSlotType last_piece_moved;
 	RelativeMove last_move;
-	void init(int depth, Move &initial, RelativeMove &lm)
+	int val;
+	int depth;
+	void init(int d, Move &initial, RelativeMove &lm, int v)
 	{
+		val = v;
 		history_sorted = false;
 		count_positive = 0;
 		last_move = lm;
@@ -4703,7 +4735,8 @@ struct MoveGenerator
 		killer_iterator = 0;
 		capture_iterator = 0;
 		initial_ok = false;
-		quiescent = (depth <= 0);
+		depth = d;
+		quiescent = (d <= 0);
 		state = Initial;
 		side = PlySide();
 		if (!initial.empty())
@@ -4712,9 +4745,9 @@ struct MoveGenerator
 			killer_moves[num_killer++] = initial;
 		}
 	}
-	MoveGenerator(int depth, Move &initial, RelativeMove &lpm)
+	MoveGenerator(int depth, Move &initial, RelativeMove &lpm, int v)
 	{
-		init(depth, initial,lpm);
+		init(depth, initial,lpm,v);
 	}
 	MoveGenerator()
 	{
@@ -4796,10 +4829,10 @@ struct MoveGenerator
 //				if (NumPins[side] != 0) {
 //					num_pin_moves = GenPinMoves(side, NumPinMoves[side], PinMoves[side]);
 //				}
-				QGenMoves(side);
+				QGenMoves(side,val,depth);
 			}
 			else {
-				GenMoves(side);
+				GenMoves(side,val,depth);
 			}
 		case PositiveCaptures:
 			if (kind) *kind = state;
@@ -4961,7 +4994,7 @@ int _perft(int d)
 	bool check = king_in_check(PlySide());
 	int e = Enpassants;
 	inc_ply();
-	GenMoves(other_color(PlySide()));
+	GenMoves(other_color(PlySide()),0,-20);
 	if (d != 1) Enpassants = e;
 	while (!MovesOrdered.empty()) {
 		int e_2 = Enpassants;
@@ -5090,8 +5123,8 @@ int NumFailHighNodes = 0;
 int NumberOnFirstMove = 0;
 int NumberOfFailHighMoves = 0;
 */	
-					++NumFailHighNodes;
-					++NumberOnFirstMove;
+//					++NumFailHighNodes;
+//					++NumberOnFirstMove;
 					--NCMidNodes; 
 				}
 				return lower;
@@ -5171,16 +5204,16 @@ int NumberOfFailHighMoves = 0;
 			if (n != nullptr && n->get_lower(d - 1) - BISHOP_VALUE > beta) {
 				if (d <= 0) { --MidNodes; }
 				else { --NCMidNodes; 
-					++NumFailHighNodes;
-					++NumberOnFirstMove;
+//					++NumFailHighNodes;
+//					++NumberOnFirstMove;
 				}
 				return n->get_lower(d - 1);
 			}
 			if (n != nullptr && n->get_lower(d - 2) - ROOK_VALUE > beta) {
 				if (d <= 0) { --MidNodes; }
 				else { 
-					++NumFailHighNodes;
-					++NumberOnFirstMove;
+//					++NumFailHighNodes;
+//					++NumberOnFirstMove;
 					--NCMidNodes; 
 				}
 				return n->get_lower(d - 2);
@@ -5229,7 +5262,7 @@ int NumberOfFailHighMoves = 0;
 		MoveGenerator::State best_move_type;
 
 		MoveGenerator &moves = MoveGenerators[CurrentPly];
-		moves.init(in_check?1:d,m2,last_move);
+		moves.init(in_check?1:d,m2,last_move,val);
 		g = -INF; a = alpha; /* save original alpha value */
 		inc_ply();
 		int move_count = 0;
@@ -5331,7 +5364,7 @@ int NumberOfFailHighMoves = 0;
 					else if (a == -INF && beta == INF //|| (d>0 && CounterMove(false, last_move).get().empty())
 						) {
 
-						int inc = 64;
+						int inc = 16;
 						int low = firstguess - inc;
 						int high = firstguess + inc;
 
@@ -5376,22 +5409,41 @@ int NumberOfFailHighMoves = 0;
 //								val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, Board[c.to]);
 //							}
 							if (val1 < beta) {
-//								val1 = -NegaScout(-val1, -a, new_depth, false, somewhere_in_null, true, true, r);
-								int low, inc = 64;
-								do {
-									low = val1 - inc;
-									inc = inc +(inc>> 1);
-									val1 = -NegaScout(-val1, -low, new_depth, false, somewhere_in_null, true, false, r);
-								} while (val1 < low);
+								val1 = -NegaScout(-val1, -a, new_depth, false, somewhere_in_null, true, true, r);
+//								int low, inc = 16;
+//								do {
+//									low = val1 - inc;
+//									inc = inc +(inc>> 1);
+//									val1 = -NegaScout(-val1, -low, new_depth, false, somewhere_in_null, true, false, r);
+//								} while (val1 < low);
+							}
+						}
+						else if (beta == INF) {
+							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, true, r);
+							if (val1 >= a) {
+								val1 = -NegaScout(-beta, -val1 + 1, new_depth, false, somewhere_in_null, true, true, r);
+//								if (abs(val2 - val1) < PAWN_VALUE) val1 = (val1 + val2) >> 1;
+//								else val1 = -NegaScout(-val2, -val1, new_depth, false, somewhere_in_null, true, false, r);
 							}
 						}
 						else {
+							val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, r);
+							if (val1 < beta) {
+								val1 = -NegaScout(-val1, -a, new_depth, false, somewhere_in_null, true, true, r);
+							}
+							/*
 							int val2;
 							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, true, r);
 							if (val1 < beta && val1 >= a) {
-								if (beta - val1 >= 128) {
+								val2 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, r);
+								if (abs(val2 - val1) < PAWN_VALUE) val1 = (val1 + val2) >> 1;
+								else val1 = -NegaScout(-val2, -val1, new_depth, false, somewhere_in_null, true, false, r);
+							}
+*/
+								/*
+								if (beta - val1 >= 32) {
 									int limit;
-									int inc = 64;
+									int inc = 16;
 									do {
 										limit = __min(val1 + inc, beta);
 										inc = inc + (inc>>1);
@@ -5399,12 +5451,13 @@ int NumberOfFailHighMoves = 0;
 									} while (val1>=limit && limit<beta);
 								} else
 									val1 = -NegaScout(-beta, -val1, new_depth, false, somewhere_in_null, true, true, r);
+*/
 								//								for (;;) {
 //									val2 = -NegaScout(-val1-1, -val1, new_depth, false, somewhere_in_null, false, true, r, can_reduce&&new_depth == d - 1);
 //									if (val2 <= val1) break;
 //									val1 = val2;
 //								}
-							}
+//							}
 							//}
 							/*
 							val1 = -NegaScout(-(a + 1), -a, d - 1, false, somewhere_in_null);
@@ -5458,7 +5511,7 @@ int NumberOfFailHighMoves = 0;
 //		}
 		if (!best_move.empty()) GetHH(d <= 0, RelativeMove(best_move)).set((d + QUIESCENT_DEPTH + 1) << (g >= beta ? (beta_real ? 2 : 1) : 0));
 
-		if (//g >= beta && 
+		if (g >= beta && 
 			!best_move.empty() //&& best_value >> 10 <= 0
 			&& best_move_type == MoveGenerator::GeneratedMoves //&& d>0 
 			) {
@@ -5483,20 +5536,25 @@ int NumberOfFailHighMoves = 0;
 		/* Traditional transposition table storing of bounds */
 		/* Fail high result implies a lower bound */
 		//n->singular = false;
-		if (g >= beta) if (beta_real) {
+		if (g >= beta) //if (beta_real)
+		{
 			n->set_lower(d, g); 
 			n->lower_exact = false;
 		}
 		/* Fail low result implies an upper bound */
-		else if (g <= alpha) if (alpha_real) {
+		else if (g <= alpha) //if (alpha_real) 
+		{
 			n->set_upper(d, g);
 			n->upper_exact = false;
 		}
 		/* Found an accurate minimax value - will not occur if called with zero window */
 		else {
-			if(alpha_real) n->set_lower(d, g);
-			if (beta_real) n->set_upper(d, g);
-			if (alpha_real && beta_real) n->upper_exact = n->lower_exact = true;
+			//if(alpha_real) 
+				n->set_lower(d, g);
+			//if (beta_real) 
+				n->set_upper(d, g);
+			//if (alpha_real && beta_real) 
+				n->upper_exact = n->lower_exact = true;
 		//	if (g - second_best_value >= PAWN_VALUE >> 1)n->singular = true;
 		}
 	}
@@ -5685,10 +5743,12 @@ void think(int output)
 		int end_time = get_ms();
 		if (output == 1)
 			printf("%3d  %9d  %7d  %5d %f nps ", i, Nodes, (pv[0].from / 10 - 2) * 8 + (pv[0].from % 10 - 1), y * 20, Nodes*1000.0 / (end_time - StartTime));   // @ED
-		else if (output == 2)
+		else if (output == 2) {
 			printf("%d %d %d %d %.2g %.2g %.2g",
-				MinDepth, x, (end_time - StartTime) / 10, Nodes,(double)Nodes/MidNodes, (double)NCNodes / NCMidNodes, (double)NumberOnFirstMove/ NumFailHighNodes
+				MinDepth, x, (end_time - StartTime) / 10, Nodes, (double)Nodes / MidNodes, (double)NCNodes / NCMidNodes, (double)NumberOnFirstMove / NumFailHighNodes
 		);
+			LOG(Log << "depth:"<<MinDepth<<" score" <<x<<" time:"<<(end_time - StartTime) / 10<<" Nodes:"<< Nodes<<" median branching factor quiescent:" <<(double)Nodes / MidNodes<<" median branching factor:"<<(double)NCNodes / NCMidNodes<<" fail high on first:"<< (double)NumberOnFirstMove / NumFailHighNodes)<<endl;
+		}
 		if (output) {
 			for (j = 0; j < pv_length; ++j) {
 				if (pv[j].empty()) break;
@@ -5971,7 +6031,7 @@ void xboard()
 void print_result()
 {
 	return;
-	GenMoves(PlySide());
+	GenMoves(PlySide(),0,-20);
 	while (!MovesOrdered.empty()) {
 		MovesOrdered.back().make();
 		if (king_in_check(PlySide())) {//illegal to make a move that leaves your king in check
