@@ -1423,6 +1423,12 @@ bool SideInEndgame(Colors s)
 	
 }
 
+int simple_eval();
+inline int simple_eval(Colors c)
+{
+	if (PlySide() == c) return simple_eval();
+	return -simple_eval();
+}
 
 struct Move
 {
@@ -1444,13 +1450,21 @@ struct Move
 	DEFLINE
 	Move &set_bonus(short b) { bonus = b; return *this; }
 
+
+
 	void movement_bonuses()
 	{
-		const Colors my_side = color(Board[from]);
-//		if (//my_side == computer_side && 
-//			piece_taken != EMPTY) bonus += 5;//transaction bonus to make computer aggressive
-		const Colors other_side = other_color(my_side);
 		/*
+		const Colors my_side = color(Board[from]);
+
+		if (my_side == computer_side &&
+			piece_taken != EMPTY) {
+			if (simple_eval(my_side)>0)
+				bonus += 5;//transaction bonus to make computer aggressive
+			else
+				bonus -= 5;
+		}
+		const Colors other_side = other_color(my_side);
 		int material_threat = MaterialSums[other_side][MAJOR_MINOR_COUNT];
 		if (is_pawn(piece_taken)) {
 			switch (shielding_king(slot_taken)) {
@@ -2325,7 +2339,8 @@ void calc_pawns()
 
 inline int positive_square_value_of_piece(Colors c, PieceType p, Pos s)
 {
-	if (!CheckForEndgame) return 0;
+	if (!CheckForEndgame) 
+		return 0;
 	if (!is_piece(p)) return 0;
 	//{}{}{} make more efficient later
 	return (!SideInEndgame(c) ? (c == LIGHT ? SquareTableL : SquareTableD)[p][s] : (c == LIGHT ? EndgameSquareTableL : EndgameSquareTableD)[p][s]);
@@ -2350,7 +2365,8 @@ inline int simple_eval()
 }
 inline int eval()
 {
-	if (CheckForEndgame) return simple_eval();
+	if (CheckForEndgame) 
+		return simple_eval();
 
 	if (PawnsDirty) //simple_calc();
 			calc_pawns();
@@ -2836,9 +2852,20 @@ int firstguess = 0;
 
 int Ply0Alpha = 0;
 
+int BestMovePerPlyIndex[MAX_PLY];
+
+RelativeMove BestMovePerPly[8][MAX_PLY];
 
 void init_board()
 {
+	for (int i = 0;i < MAX_PLY;++i) {
+		for (int j = 0;j < 4; ++j) {
+			//			CaptureKillers.BestMovePerPly[j][i].clear();
+			BestMovePerPly[j][i].clear();
+		}
+		//		CaptureKillers.BestMovePerPlyIndex[i] = 0;
+		BestMovePerPlyIndex[i] = 0;
+	}
 	MinorPieces[LIGHT] = MinorPieces[DARK] = 2;
 	SufficientPieces = 8 * 2 + 2 + 4;
 	for (int c=0;c<NUM_COLORS;++c) for (int i=0;i<NUM_MATERIAL_INDEXES;++i) MaterialSums[c][i]=0;
@@ -2911,7 +2938,7 @@ int pv_length = 0;
 Move Ply0Move;
 bool has_a_first_move()
 {
-	return !pv[0].empty();
+	return !Ply0Move.empty();
 }
 
 void checkup()
@@ -3177,18 +3204,24 @@ public:
 			upper_bound_depth = depth;
 		}
 	}
-	void set_move(Move &m)
+	void set_move(Move &m, int d)
 	{
+		move_depth = d;
 		move = m;
 	}
 
-	void set_move(RelativeMove &m)
+	void set_move(RelativeMove &m, int d)
 	{
+		move_depth = d;
 		move = m;
 	}
 	HashMove & get_move()
 	{
 		return move;
+	}
+	int get_move_depth()
+	{
+		return move_depth;
 	}
 	void clear()
 	{
@@ -3225,7 +3258,7 @@ public:
 	int eval_copy;
 	char upper_bound_depth;
 	char lower_bound_depth;
-
+	char move_depth;
 	int move_created;
 	HashMove move;
 };
@@ -4670,9 +4703,6 @@ cache line, old entries are evicted first, as described later.
 #define NUM_KILLERS 7
 
 RelativeMove KillerTemp[HALF_KILLERS];
-
-	RelativeMove BestMovePerPly[8][MAX_PLY];
-	int BestMovePerPlyIndex[MAX_PLY];
 	void clear_killer()
 	{
 		for (int i = 0;i < MAX_PLY;++i) {
@@ -5251,6 +5281,8 @@ inline bool close_to_mate(int score)
 
 #define FUTILITY
 #define REVERSE_FUTILITY
+#define LMR
+#define NULL_MOVE
 
 //#define IGNORE_TT
 
@@ -5269,8 +5301,8 @@ int NCMidNodes = 0;
 int NumFailHighNodes = 0;
 int NumberOnFirstMove = 0;
 int NumberOfFailHighMoves = 0;
+int MinDepth;
 
-//#define NULL_MOVE
 int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, bool alpha_real, bool beta_real,RelativeMove &last_move, bool in_pv)
 {
 	PieceSlotType last_piece_moved = last_move.from;
@@ -5292,6 +5324,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 	Colors my_color = PlySide();
 	HashTableEntry *n=nullptr;
 	Move m2;
+	int move_depth = -127;
 	//if (d>0)
 	{
 		n = GetOrMakeHash(d <= 0);
@@ -5302,6 +5335,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 		HashMove *m = &n->get_move();
 		m2 = TestMove(PlySide(), Board[m->from], m->to, m->became);
 		if (!m2.empty()) {
+			move_depth = n->get_move_depth();
 			inc_ply();
 			m2.make();
 			hash_move_repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
@@ -5374,7 +5408,7 @@ int NumberOfFailHighMoves = 0;
 
 	if (d == -QUIESCENT_DEPTH) {
 		g = (n == nullptr ? eval() : n->get_eval()); /* leaf node */
-		//if (last_piece_moved != OFF_BOARD) g = g - SEE(Players.positions[last_piece_moved]);
+		if (MinDepth<6 && last_piece_moved != OFF_BOARD) g = g - SEE(Players.positions[last_piece_moved]);
 	}
 	else {
 		int val = (n == nullptr ? eval() : n->get_eval());
@@ -5382,19 +5416,20 @@ int NumberOfFailHighMoves = 0;
 		const bool in_check = king_in_check(PlySide());
 
 #ifdef FUTILITY
-		if (alpha_real && alpha == beta - 1 && !in_check && CurrentPly>0 && !(close_to_mate(alpha) || close_to_mate(beta))) {
-			if (n != nullptr && n->get_upper(d - 1) + BISHOP_VALUE < alpha) {
+		if (//alpha_real && 
+			alpha == beta - 1 && !in_check && CurrentPly>0 && !(close_to_mate(alpha) || close_to_mate(beta))) {
+			if (n != nullptr && n->get_upper(d - 1) + ROOK_VALUE < alpha) {
 				if (d<=0) --MidNodes; else --NCMidNodes;
 				return n->get_upper(d - 1);
 			}
-			if (n != nullptr && n->get_upper(d - 2) + ROOK_VALUE < alpha) {
-				if (d<=0) --MidNodes; else --NCMidNodes;
-				return n->get_upper(d - 2);
-			}
-			if (n != nullptr && n->get_upper(d - 3) + QUEEN_VALUE + PAWN_VALUE< alpha) {
-				if (d <= 0) --MidNodes; else --NCMidNodes;
-				return n->get_upper(d - 2);
-			}
+//			if (n != nullptr && n->get_upper(d - 2) + ROOK_VALUE < alpha) {
+//				if (d<=0) --MidNodes; else --NCMidNodes;
+//				return n->get_upper(d - 2);
+//			}
+//			if (n != nullptr && n->get_upper(d - 3) + QUEEN_VALUE + PAWN_VALUE< alpha) {
+//				if (d <= 0) --MidNodes; else --NCMidNodes;
+//				return n->get_upper(d - 2);
+//			}
 			//			if (d == 1 && val + BISHOP_VALUE < alpha) return val;
 			//			if (d == 2 && val + ROOK_VALUE < alpha) return val;
 		}
@@ -5414,8 +5449,9 @@ int NumberOfFailHighMoves = 0;
 		}
 
 #ifdef REVERSE_FUTILITY
-		if (beta_real && alpha == beta - 1 && !in_check && CurrentPly > 0 && !(close_to_mate(alpha) || close_to_mate(beta))) {
-			if (n != nullptr && n->get_lower(d - 1) - BISHOP_VALUE > beta) {
+		if (//beta_real && 
+			alpha == beta - 1 && !in_check && CurrentPly > 0 && !(close_to_mate(alpha) || close_to_mate(beta))) {
+			if (n != nullptr && n->get_lower(d - 1) - ROOK_VALUE > beta) {
 				if (d <= 0) { --MidNodes; }
 				else { --NCMidNodes; 
 //					++NumFailHighNodes;
@@ -5423,6 +5459,7 @@ int NumberOfFailHighMoves = 0;
 				}
 				return n->get_lower(d - 1);
 			}
+			/*
 			if (n != nullptr && n->get_lower(d - 2) - ROOK_VALUE > beta) {
 				if (d <= 0) { --MidNodes; }
 				else { 
@@ -5443,28 +5480,32 @@ int NumberOfFailHighMoves = 0;
 			}
 			if (CurrentPly > 3 && d == 1 && val - BISHOP_VALUE > beta) return val;
 			if (beta_real && CurrentPly > 3 && d == 2 && val - ROOK_VALUE > beta) return val;
+*/
 		}
 #endif
 
 		//endgame test should be side to move has 2 or fewer minor or major pieces
 #ifdef NULL_MOVE
-		if (beta_real &&
-			val > beta &&
-			!in_pv &&
-			beta != INF &&
-			!in_null 
-			//!somewhere_in_null
+		if (//beta_real &&
+			alpha == beta - 1 &&
+			val > beta-BISHOP_VALUE &&
+			//val < beta + BISHOP_VALUE &&
+			//!in_pv &&
+			//beta != INF &&
+			//!in_null 
+			!in_null
 			&&
 			//CurrentPly>2 &&
 			!in_check &&
-			!SideInEndgame_for_null(my_color) &&
-			d > 1 &&
+			//!SideInEndgame_for_null(my_color) &&
+			d >= 3 &&
 			(somewhere_in_null || RepeatList.count(my_color) < 3)
 			) {
 			inc_ply();
 			int new_value;
+			int new_depth;
 			try {
-				int new_depth = __max(d - 4, 0);//
+				new_depth = __max(d - 4, 1);//
 				//(d>6?d - 5: __max(d - 4, 0));
 				new_value = -NegaScout(-beta,-beta+1,new_depth,true,true,beta_real,false, EmptyMove,false);
 			}
@@ -5473,12 +5514,14 @@ int NumberOfFailHighMoves = 0;
 				throw OutOfTime;
 			}
 			dec_ply();
-			if (new_value > beta) {
-//				if (CheckForEndgame) {
-				if (d <= 0)  --MidNodes; else --NCMidNodes;
-					return beta;
+			if (new_value >= beta) {
+//				if (SideInEndgame_for_null(my_color)) {
+					new_value = NegaScout(beta - 1, beta, new_depth, true, somewhere_in_null, false, beta_real, last_move, false);
 //				}
-//				else d = __max(d - 4, 0);
+				if (new_value >= beta) {
+					if (d <= 0)  --MidNodes; else --NCMidNodes;
+					return new_value;
+				}
 			}
 		}
 #endif
@@ -5515,31 +5558,20 @@ int NumberOfFailHighMoves = 0;
 			while ((g < beta) && -INF!=(move_value= moves.next(c,&move_type,&iid_value))) {
 				if (a != alpha) EnableHistory = false;
 				if (move_type == MoveGenerator::IID) {
-					if (d >= IID_NUM+2 && !EnableHistory) {
+					int iid_depth = __max((d >> 1) - 1, 0);
+					if (move_depth >= iid_depth) {
+						EnableHistory = true;
+						//if (move_depth > d-4) EnableHistory = true;
+						//else iid_depth = move_depth + 1;
+					}
+					if (d > IID_NUM && !EnableHistory) {
 						try {
 							MovesOrdered.unmark();
 							while (MovesOrdered.next_unmarked())
 							{
 								c = MovesOrdered.best();
 								c.make();
-								int val1 = -NegaScout(-beta, -a, __max((d>>1)-1,0), false, somewhere_in_null, beta_real, alpha_real, RelativeMove(c), false);
-/*								if (val1 >= beta) {
-									val1 = -NegaScout(-beta, -a, d-1, false, somewhere_in_null, beta_real, alpha_real, RelativeMove(c), false);
-									MovesOrdered.best().clear();
-									if (val1 > g) {
-										second_best_value = g;
-										g = val1;
-										best_move = c;
-										//best_value = move_value;
-										best_move_type = move_type;
-										if (CurrentPly == 1) Ply0Move = c;
-										if (val1 >= beta) {
-											c.unmake();
-											break;
-										}
-									}
-								}
-								*/
+								int val1 = -NegaScout(-beta, -a, iid_depth, false, somewhere_in_null, beta_real, alpha_real, RelativeMove(c), false);
 								MovesOrdered.unmarked_value() = val1;
 								c.unmake();
 							}
@@ -5589,16 +5621,17 @@ int NumberOfFailHighMoves = 0;
 //					c.unmake();
 //					continue;
 //				}
+#ifdef LMR
 				delay = d > 2 && !in_check && move_type == MoveGenerator::GeneratedMoves //(iid_value >> 10 <= 0)  // || move_count>=3) 
 					//&& c.slot_taken == NO_SLOT 
-					&& c.became == c.initial && !is_king(c.initial) && !(in_endgame && is_pawn(c.initial));
+					&& c.became == c.initial && !is_king(c.initial) && !(is_pawn(c.initial));
 				if (delay) {
 					++reduced;
-					if (d > 4 && reduced > 2
+					if (d > 3 && reduced > 3
 						)
 						new_depth = d - 3; else new_depth = d - 2;
 				}
-
+#endif
 				//if (iid_value >> 10 <= 0 && move_count > 3) {
 				//	delay = true;
 				//	new_depth = d - 2;
@@ -5644,6 +5677,8 @@ int NumberOfFailHighMoves = 0;
 						) {
 //							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, true, true, r,true);
 ///*
+#define ASPIRATION_WINDOW
+#ifdef ASPIRATION_WINDOW
 						int inc = 16;
 						int low = firstguess - inc;
 						int high = firstguess + inc;
@@ -5651,13 +5686,13 @@ int NumberOfFailHighMoves = 0;
 						val1 = -NegaScout(-high, -low, new_depth, false, somewhere_in_null, false, false, r,true);
 						 if (val1<low) {
 							 do {
-								 inc <<= 1;
+								 //inc <<= 1;
 								 low = val1 - inc;
-								 //inc = inc+ (inc>>1);
+								 inc = inc+ (inc>>1);
 								 int val2 = -NegaScout(-val1, -low, new_depth, false, somewhere_in_null, true, false, r, true);
 								 if (val2 > val1) {
+//									 inc = (inc<<1)+val2-val1;
 									 val1 = val2;
-									 inc >>= 1;
 								 }
 								 else {
 									 val1 = val2;
@@ -5667,13 +5702,13 @@ int NumberOfFailHighMoves = 0;
 						}
 						else if (val1 >= high) {
 							do {
-								inc <<= 1;
+//								inc <<= 1;
 								high = val1 + inc;
-//								inc = inc + (inc>>1);
+								inc = inc + (inc>>1);
 								int val2 = -NegaScout(-high, -val1, new_depth, false, somewhere_in_null, false, true, r, true);
 								if (val2 < val1) {
+//									inc = (inc << 1) + val1 - val2;
 									val1 = val2;
-									inc >>= 1;
 								}
 								else {
 									val1 = val2;
@@ -5681,7 +5716,38 @@ int NumberOfFailHighMoves = 0;
 								}
 							} while (true);
 						}
+#else
+						int inc = 16;
+						int low = firstguess - inc;
+						int high = firstguess + inc;
+						bool afound = false;
+						val1 = -NegaScout(-high, -low, new_depth, false, somewhere_in_null, false, false, r, true);
+						if (val1<low) {
+							//inc <<= 1;
+							low = val1 - 64;
+							int val2 = -NegaScout(-val1, -low, new_depth, false, somewhere_in_null, true, false, r, true);
 
+							if (val2 > val1) {
+							}
+							else {
+								if (val2 >= low) afound = true;
+							}
+							val1 = val2;
+						}
+						else if (val1 >= high) {
+							high = val1 + 32;
+							int val2 = -NegaScout(-high, -val1, new_depth, false, somewhere_in_null, false, true, r, true);
+							if (val2 < val1) {
+							}
+							else {
+								if (val2 < high) afound=true;
+							}
+							val1 = val2;
+						}
+						if (!afound) {
+							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, true, true, r, true);
+						}
+#endif
 //*/
 /*
 						val1 = -NegaScout(-(firstguess+1), -firstguess, new_depth, false, somewhere_in_null, false, false, r);
@@ -5701,14 +5767,14 @@ int NumberOfFailHighMoves = 0;
 					}
 					else {
 						if (a == -INF) {
-							val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, r,false);
+							val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, beta_real, false, r,false);
 //							if (new_depth != d - 1 && val1 > a) {
 //								delay = false;
 //								new_depth = d - 1;
 //								val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, Board[c.to]);
 //							}
 							if (val1 < beta) {
-								val1 = -NegaScout(-val1, -a, new_depth, false, somewhere_in_null, true, true, r, false);
+								val1 = -NegaScout(-val1, -a, new_depth, false, somewhere_in_null, true, alpha_real, r, false);
 //								int low, inc = 16;
 //								do {
 //									low = val1 - inc;
@@ -5718,24 +5784,51 @@ int NumberOfFailHighMoves = 0;
 							}
 						}
 						else if (beta == INF) {
-							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, true, r,false);
+#ifdef ASPIRATION_WINDOW
+							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, alpha_real, r,false);
 							if (val1 >= a) {
 								int inc = 16;
 								do {
-									inc <<= 1;
 									int val2 = -NegaScout(-(val1 + inc), -val1, new_depth, false, somewhere_in_null, false, true, r, true);
+									inc += inc >> 1;
 									if (val2 < val1) {
-										//val1 = val2;
-										inc >>= 1;
-									} else if (val2 <= val1 + inc) {
-										val1 = val2;
-										break;
+//										inc = (inc<<1)+(val2-val1);
+//										val1 = val2;
+									}
+									else {
+										if (val2 <= val1 + inc) {
+											val1 = val2;
+											break;
+										}
 									}
 									val1 = val2;
 								} while (true);
 //								if (abs(val2 - val1) < PAWN_VALUE) val1 = (val1 + val2) >> 1;
 //								else val1 = -NegaScout(-val2, -val1, new_depth, false, somewhere_in_null, true, false, r);
 							}
+#else
+							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, alpha_real, r, false);
+							bool afound = false;
+							if (val1 >= a) {
+								int inc = 32;
+								int val2 = -NegaScout(-(val1 + inc), -val1, new_depth, false, somewhere_in_null, false, true, r, true);
+								//inc += inc >> 1;
+								if (val2 < val1) {
+									val1 = a;
+								}
+								else {
+									if (val2 <= val1 + inc) {
+										afound = true;
+									}
+								}
+								val1 = val2;
+								if (!afound) {
+									val2 = -NegaScout(-beta, -val1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, true);
+									if (val2 < val1) val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, true);
+									else val1 = val2;
+								}
+							}
+#endif
 						}
 						else {
 							/*
@@ -5745,9 +5838,11 @@ int NumberOfFailHighMoves = 0;
 							}*/
 							///*
 							int val2;
-							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, true, r,false);
+							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, alpha_real, r,false);
 							if (val1 < beta && val1 >= a) {
-								val1 = -NegaScout(-beta, -val1, new_depth, false, somewhere_in_null, true, true, r, true);
+								val2 = -NegaScout(-beta, -val1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, true);
+								if (val2<val1 ) val1=-NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, true);
+								else val1 = val2;
 							}
 /*							if (val1 < beta && val1 >= a) {
 								val2 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, r,false);
@@ -5807,6 +5902,7 @@ int NumberOfFailHighMoves = 0;
 				}
 				if (g > a) {
 					a = g;
+					alpha_real = true;
 				}
 				c.unmake();
 			}
@@ -5839,7 +5935,7 @@ int NumberOfFailHighMoves = 0;
 		dec_ply();
 		if (n != nullptr && !best_move.empty()) {
 			if (!(Hash == n->key)) n = nullptr;
-			else n->set_move(best_move);
+			else n->set_move(best_move,d);
 		}
 		if (g == -INF) {
 			if (d < 1) return (n == nullptr?eval():n->get_eval());
@@ -5905,7 +6001,6 @@ int TimeExtendCounter = 0;
 int MaxTime;
 int StartTime;
 int MaxDepth;
-int MinDepth;
 int TimeIncBy = 0;
 int clock;
 bool TimeExtended;
@@ -5977,12 +6072,20 @@ void think(int output)
 	EphemeralValue = 0;
 	TimeExtended = false;
 	int i, j, x;
-	for (i = 0;i < MAX_PLY;++i) {
+	for (i = 0;i < MAX_PLY-2;++i) {
 		for (j = 0;j < 4; ++j) {
-//			CaptureKillers.BestMovePerPly[j][i].clear();
+			//			CaptureKillers.BestMovePerPly[j][i].clear();
+			BestMovePerPly[j][i] = BestMovePerPly[j][i+2];
+		}
+		//		CaptureKillers.BestMovePerPlyIndex[i] = 0;
+		BestMovePerPlyIndex[i] = BestMovePerPlyIndex[i+2];
+	}
+	for (;i < MAX_PLY;++i) {
+		for (j = 0;j < 4; ++j) {
+			//			CaptureKillers.BestMovePerPly[j][i].clear();
 			BestMovePerPly[j][i].clear();
 		}
-//		CaptureKillers.BestMovePerPlyIndex[i] = 0;
+		//		CaptureKillers.BestMovePerPlyIndex[i] = 0;
 		BestMovePerPlyIndex[i] = 0;
 	}
 	Ply0Move.clear();
@@ -6009,8 +6112,8 @@ void think(int output)
 	for (i = 1; i <= __min(MaxDepth,MAX_PLY-12); ++i) {
 //		if (i == 5)USE_TT = true;
 
-//		if (i < 7) QUIESCENT_DEPTH = 5;
-//		else 
+		if (i < 6) QUIESCENT_DEPTH = 5;
+		else 
 			QUIESCENT_DEPTH = 11;
 
 		MinDepth = i;
