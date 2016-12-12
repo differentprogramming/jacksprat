@@ -241,6 +241,7 @@ inline PieceSlotType base_by_color(Colors c)
 
 typedef signed char Pos;
 Pos En_passant_history[MAX_MOVES + MAX_PLY];
+Colors En_passant_colors_history[MAX_MOVES + MAX_PLY];
 typedef Pos PlayersPositions[NUM_PIECE_SLOTS + 2];
 typedef int PlayersEnpassant[NUM_PIECE_SLOTS + 2];
 typedef PieceType PlayersPieces[NUM_PIECE_SLOTS + 2];//The +2 is so that NO_SLOT and OFF_BOARD can map to EMPTY
@@ -347,10 +348,15 @@ const int EValuePerPiece[NUM_PIECE_TYPES] = {
 
 const char PieceCharL[] = ".KKKPPNBRRQ";
 const char PieceCharD[] = ".kkkppnbrrq";
+const char PieceChar2[] = ".1 c a  1  ";
 const char piece_char(Colors c, PieceType p)
 {
 	if (c == LIGHT) return PieceCharL[p];
 	return PieceCharD[p];
+}
+const char piece_char2(PieceType p)
+{
+	return PieceChar2[p];
 }
 
 const PieceType ChangePieceOnMove[] =
@@ -1649,8 +1655,8 @@ struct HH
 	long long value;
 	void set(int v)
 	{
-		if (time != history_len + ClearHash) value = v;//v*v;
-		else value += v;
+		if (time != history_len + ClearHash) value = v*v;
+		else value += v*v;
 		time = history_len + ClearHash;
 	}
 	long long get()
@@ -1741,7 +1747,7 @@ struct MoveList {
 //		if (CurrentPly > 10) return;
 		for (int i = first();i < base[ply]; ++i) {
 			if (!moves[i].empty()) {
-				value[i] += GetHH(q, RelativeMove(moves[i])).get()<<10;
+				value[i] += GetHH(q, RelativeMove(moves[i])).get();
 			}
 		}
 		best_index[ply] = second_best_index[ply] = third_best_index[ply] = fourth_best_index[ply] = -1;
@@ -1809,7 +1815,7 @@ struct MoveList {
 //		for (int i = first();i < base[ply]; ++i) {
 //			marked[i] = false;
 //		}
-		best_index[ply] == -1;
+		best_index[ply] = -1;
 	}
 	bool no_best()
 	{
@@ -2375,7 +2381,7 @@ inline int eval()
 //	int silly = (Hash.high_mask() & 7);
 //	if (_PlySide == DARK) silly = -silly;
 	return  material_count +
-		PersistantValue + EphemeralValue + (PawnsValue>>1);//+silly;
+		PersistantValue + EphemeralValue + PawnsValue;//+silly;
 }
 
 
@@ -2474,7 +2480,7 @@ Move::Move(Pos f, Pos t, Castling c PARAMLINE) :from(f),
 to(t),
 taken_at(t),
 initial(Players.pieces[Board[f]]),
-became(ChangePieceOnMove[initial]),
+became((PieceType)ChangePieceOnMove[initial]),
 slot_taken(NO_SLOT),
 piece_taken(EMPTY),
 castling(c),
@@ -2508,7 +2514,7 @@ Move::Move(Pos f, Pos t, Pos enpassant_pos, CheckForEnpassantEnum PARAMLINE) :fr
 to(t),
 taken_at(enpassant_pos),
 initial(Players.pieces[Board[f]]),
-became(initial),
+became(ChangePieceOnMove[initial]),
 slot_taken(Board[enpassant_pos]),
 piece_taken(Players.pieces[Board[enpassant_pos]]),
 castling(NotCastling),
@@ -2520,6 +2526,13 @@ INITLINE
 }
 
 //from other player
+
+int sign(int i)
+{
+	if (i < 0) return -1;
+	return 1;
+}
+
 Move::Move(Pos f, Pos t, CheckForEnpassantEnum PARAMLINE) :from(f),
 to(t),
 taken_at(t),
@@ -2532,22 +2545,7 @@ castling(NotCastling),
 bonus(0)
 INITLINE
 {
-	if (initial == PAWN && color(Board[f])==LIGHT && piece_taken == EMPTY && to != from + UP && to != from + UP + UP) {
-		assert(Players.pieces[Board[to + DOWN]] == PAWN_JUST_ADVANCED);
-		taken_at = to + DOWN;
-		slot_taken = Board[taken_at];
-		piece_taken = Players.pieces[slot_taken];
-	}
-	else if (initial == PAWN && color(Board[f]) == DARK && piece_taken == EMPTY && to != from + DOWN && to != from + DOWN + DOWN) {
-		assert(Players.pieces[Board[to + UP]] == PAWN_JUST_ADVANCED);
-		taken_at = to + UP;
-		slot_taken = Board[taken_at];
-		piece_taken = Players.pieces[slot_taken];
-	}
-	else if (initial == PAWN && abs(to-from)>11) {
-		became = PAWN_JUST_ADVANCED;
-	}
-	else if (initial == KING_NOT_MOVED && color(Board[f]) == LIGHT)
+	if (initial == KING_NOT_MOVED && color(Board[f]) == LIGHT)
 	{
 		if (to == c1) castling = CastleLeft;
 		else if (to == g1) castling = CastleRight;
@@ -2560,6 +2558,13 @@ INITLINE
 		became = KING_CASTLED;
 	}
 	movement_bonuses();
+	if (initial == PAWN || initial == PAWN_JUST_ADVANCED) {
+		if (abs(to - from) == 20)
+			*this = Move(from, to, PAWN_JUST_ADVANCED ATLINE);
+		else if (abs(to - from) != 10 && Board[to] == NO_SLOT)
+			*this = Move(from, to, from + (abs(to - from) - 10)*sign(to - from), Move::DoEnpassant ATLINE);
+	}
+
 }
 
 Move::Move(const Move &m) :
@@ -2628,6 +2633,8 @@ void Move::make()
 //*/
 	if (became == PAWN_JUST_ADVANCED) {
 		En_passant_history[MoveNumber + history_len] = to;
+		En_passant_colors_history[MoveNumber + history_len] == color(Board[to]);
+
 //		cout << "* "<< MoveNumber + history_len << " " <<PosToStandard[to];
 	}
 	else En_passant_history[MoveNumber + history_len] = 0;
@@ -2769,7 +2776,8 @@ void Move::unmake()
 	}
 ///*
 	if (MoveNumber + history_len > 1
-		&& Players.pieces[Board[En_passant_history[MoveNumber + history_len - 2]]] == PAWN) {
+		&& Players.pieces[Board[En_passant_history[MoveNumber + history_len - 2]]] == PAWN
+		&& En_passant_colors_history[MoveNumber + history_len - 2] == color(Board[En_passant_history[MoveNumber + history_len - 2]])) {
 		update_hash(Board[En_passant_history[MoveNumber + history_len - 2]]);
 		Players.pieces[Board[En_passant_history[MoveNumber + history_len - 2]]] = PAWN_JUST_ADVANCED;
 		update_hash(Board[En_passant_history[MoveNumber + history_len - 2]]);
@@ -2871,7 +2879,10 @@ void init_board()
 	for (int c=0;c<NUM_COLORS;++c) for (int i=0;i<NUM_MATERIAL_INDEXES;++i) MaterialSums[c][i]=0;
 	PawnsValue = 0;
 	PawnsDirty = true;
-	for (int i = 0;i < MAX_MOVES + MAX_PLY;++i)En_passant_history[i] = 0;
+	for (int i = 0;i < MAX_MOVES + MAX_PLY;++i) {
+		En_passant_history[i] = 0;
+		En_passant_colors_history[i] = NO_COLOR;
+	}
 	firstguess = 0;
 	Ply0Alpha = 0;
 	Promotions.clear();
@@ -2959,6 +2970,10 @@ void checkup()
 #endif
 }
 
+void GenMoves(Colors c, int val, int depth);
+void set_side(Colors s);
+bool king_in_check(Colors c);
+
 bool parse_move(Move &m, char *s)
 {
 
@@ -2968,6 +2983,33 @@ bool parse_move(Move &m, char *s)
 		s[2] < 'a' || s[2] > 'h' ||
 		s[3] < '0' || s[3] > '9')
 		return false;
+	Pos from = s[0] - 'a' + 1 + 10 * (10 - (s[1] - '0'));
+	Pos to = s[2] - 'a' + 1 + 10 * (10 - (s[3] - '0'));
+	PieceType became = EMPTY;
+	switch (s[4]) {
+	case 'N':
+	case 'n':
+		became = KNIGHT;
+		break;
+	case 'B':
+	case 'b':
+		became = BISHOP;
+		break;
+	case 'R':
+	case 'r':
+		became = ROOK;
+		break;
+	case 'Q':
+	case 'q':
+		became = QUEEN;
+		break;
+	default:
+		if (is_pawn(Players.pieces[Board[from]])) {
+			if (to <= h8) became = QUEEN;
+			else if (to >= a1) became = QUEEN;
+		}
+	}
+	/*
 	Move move((Pos)(s[0] - 'a' + 1 + 10 * (10 - (s[1] - '0'))),
 		(Pos)(s[2] - 'a' + 1 + 10 * (10 - (s[3] - '0'))), Move::CheckForEnpassant ATLINE);
 	switch (s[4]) {
@@ -2995,8 +3037,31 @@ bool parse_move(Move &m, char *s)
 			if (move.to >= a1) move.became = QUEEN;
 		}
 	}
-	m = move;
-	return true;
+*/
+//	set_side(other_color(PlySide()));
+	GenMoves(PlySide(), 0, 1);
+	m.clear();
+
+	while (!MovesOrdered.empty()) {
+		MovesOrdered.back().make();
+		if (king_in_check(PlySide())) {//illegal to make a move that leaves your king in check
+			MovesOrdered.back().unmake();
+			MovesOrdered.pop();
+			continue;
+		}
+		if (became == EMPTY) {
+			if (MovesOrdered.back().from == from && MovesOrdered.back().to == to)
+				m = MovesOrdered.back();
+		}
+		else {
+			if (became == MovesOrdered.back().became && MovesOrdered.back().from == from && MovesOrdered.back().to == to)
+				m = MovesOrdered.back();
+		}
+		MovesOrdered.back().unmake();
+		MovesOrdered.pop();
+	}
+
+	return !m.empty();
 }
 
 const char *move_str(const Move &m)
@@ -3069,11 +3134,11 @@ void log_board()
 	for (int row = 0;row < 80;row += 10) {
 		Log << "\n" << 8 - row / 10 << " ";
 		for (int col = a8; col <= h8; ++col) {
-			if (Board[row + col] == NO_SLOT) Log << " .";
-			else Log << ' ' << piece_char(color(Board[row + col]),Players.pieces[Board[row + col]]);
+			if (Board[row + col] == NO_SLOT) Log << " . ";
+			else Log << ' ' << piece_char(color(Board[row + col]),Players.pieces[Board[row + col]]) << piece_char2( Players.pieces[Board[row + col]]);
 		}
 	}
-	Log << "\n   a b c d e f g h\n*/\n";
+	Log << "\n   a  b  c  d  e  f  g  h\n*/\n";
 
 	Log << "int board_init[BOARD_SIZE]\n{\n";
 	for (int i = 0;i < BOARD_SIZE;++i) Log << (int)Board[i] << ",";
@@ -3100,10 +3165,10 @@ void print_board()
 		printf("\n%d ", 8 - row / 10);
 		for (int col = a8; col <= h8; ++col) {
 			if (Board[row + col] == NO_SLOT) printf(" .");
-			else printf(" %c", piece_char(color(Board[row+col]),Players.pieces[Board[row + col]]));
+			else printf(" %c%c", piece_char(color(Board[row+col]),Players.pieces[Board[row + col]]), piece_char2(Players.pieces[Board[row + col]]));
 		}
 	}
-	printf("\n\n   a b c d e f g h\n\n");
+	printf("\n\n   a  b  c  d  e  f  g  h\n\n");
 }
 
 //add c as color of sliding piece
@@ -3355,6 +3420,7 @@ bool order_value(int &result, Colors c,Move &m, int depth)
 #define CAP_SCALE(x,y) ((x)<<10)
 bool ThreatenedExcluding(Colors o, Pos root_pos, PieceSlotType exclude);
 int SEE(Colors c, Pos root_pos, PieceSlotType exclude, int depth);
+//#define COUNTER(c,expanding,attacker,value) (depth<=IID_NUM?-SEE(c,expanding,attacker,INF):0)
 #define COUNTER(c,expanding,attacker,value) (-SEE(c,expanding,attacker,INF))
 //#define COUNTER(c,expanding,attacker,value) (-SEE(c,expanding,attacker,1))
 //#define COUNTER(c,expanding,attacker,value) ThreatenedExcluding(c,expanding,attacker)?-value:0
@@ -3378,7 +3444,7 @@ int SEE(Colors c, Pos root_pos, PieceSlotType exclude, int depth);
 ///*
 #define CAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
 		Move m MOVE_PARAMS;\
-		GENERATE_TO.push(m,(val<<10)+(MVV_LVA));\
+		GENERATE_TO.push(m,(val<<9)+(MVV_LVA));\
 	} 
 	//*/
 #define NONCAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
@@ -5123,9 +5189,12 @@ struct MoveGenerator
 //				MovesOrdered.add_history(quiescent);
 //			}
 //		else
+
+#define KILLERS
+#ifdef KILLERS
 				state = Killers;
 		case Killers:
-			if (initial_ok || depth < IID_NUM + 2){
+			if (EnableHistory && (initial_ok || depth < IID_NUM + 2)){
 			if (kind) *kind = state;
 			RelativeMove *m;
 				while (get_killers(&m, killer_iterator)) {
@@ -5154,11 +5223,15 @@ struct MoveGenerator
 				if (found) state = GeneratedMoves;
 				else return -INF;
 		}
+#endif
 			state = GeneratedMoves;
 			//			*/
+#define HISTORY_HEURISTIC
+#ifdef HISTORY_HEURISTIC
 			if (//initial_ok 
 				(!try_iid || depth < IID_NUM + 2) && EnableHistory
 				) MovesOrdered.add_history(quiescent);
+#endif
 			//bool LazyGenMove(int &i, bool quiescent, Colors c, Move *killer_moves, int num_killer)
 			state = GeneratedMoves;
 
@@ -5333,7 +5406,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 		int upper = n->get_upper(d);
 		bool hash_move_repeat = false;
 		HashMove *m = &n->get_move();
-		m2 = TestMove(PlySide(), Board[m->from], m->to, m->became);
+		if (!m->empty()) m2 = TestMove(PlySide(), Board[m->from], m->to, m->became);
 		if (!m2.empty()) {
 			move_depth = n->get_move_depth();
 			inc_ply();
@@ -5347,6 +5420,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			m2.unmake();
 			dec_ply();
 		}
+		else if (CurrentPly == 0) m2 = Ply0Move;
 		if (!hash_move_repeat && lower >= beta) {
 			if (CurrentPly == 0) {
 				if (!m2.empty()) {
@@ -5402,13 +5476,14 @@ int NumberOfFailHighMoves = 0;
 			beta = __min(beta, upper);
 		}
 	}
+	//else if (CurrentPly == 0) m2 = Ply0Move;
 #endif
 	int g, a;
 	int second_best_value = INF;
 
 	if (d == -QUIESCENT_DEPTH) {
 		g = (n == nullptr ? eval() : n->get_eval()); /* leaf node */
-		if (MinDepth<6 && last_piece_moved != OFF_BOARD) g = g - SEE(Players.positions[last_piece_moved]);
+		//if (MinDepth<6 && last_piece_moved != OFF_BOARD) g = g - SEE(Players.positions[last_piece_moved]);
 	}
 	else {
 		int val = (n == nullptr ? eval() : n->get_eval());
@@ -5416,7 +5491,7 @@ int NumberOfFailHighMoves = 0;
 		const bool in_check = king_in_check(PlySide());
 
 #ifdef FUTILITY
-		if (//alpha_real && 
+		if (CheckForEndgame &&
 			alpha == beta - 1 && !in_check && CurrentPly>0 && !(close_to_mate(alpha) || close_to_mate(beta))) {
 			if (n != nullptr && n->get_upper(d - 1) + ROOK_VALUE < alpha) {
 				if (d<=0) --MidNodes; else --NCMidNodes;
@@ -5436,12 +5511,12 @@ int NumberOfFailHighMoves = 0;
 #endif
 		if (d < 1 && !in_check)
 		{
-			if (val > beta) {
+			if (val >= beta) {
 				if (d <= 0) --MidNodes; else --NCMidNodes;
 				return val; //stand pat
 			}
 			if (n != nullptr)
-				if (n->get_lower(-QUIESCENT_DEPTH) > beta) {
+				if (n->get_lower(-QUIESCENT_DEPTH) >=beta) {
 					if (d <= 0) --MidNodes; else --NCMidNodes;
 					return n->get_lower(-QUIESCENT_DEPTH);
 				}
@@ -5449,9 +5524,9 @@ int NumberOfFailHighMoves = 0;
 		}
 
 #ifdef REVERSE_FUTILITY
-		if (//beta_real && 
+		if (CheckForEndgame &&
 			alpha == beta - 1 && !in_check && CurrentPly > 0 && !(close_to_mate(alpha) || close_to_mate(beta))) {
-			if (n != nullptr && n->get_lower(d - 1) - ROOK_VALUE > beta) {
+			if (n != nullptr && n->get_lower(d - 1) - BISHOP_VALUE > beta) {
 				if (d <= 0) { --MidNodes; }
 				else { --NCMidNodes; 
 //					++NumFailHighNodes;
@@ -5497,7 +5572,7 @@ int NumberOfFailHighMoves = 0;
 			&&
 			//CurrentPly>2 &&
 			!in_check &&
-			//!SideInEndgame_for_null(my_color) &&
+			!SideInEndgame_for_null(my_color) &&
 			d >= 3 &&
 			(somewhere_in_null || RepeatList.count(my_color) < 3)
 			) {
@@ -5515,13 +5590,11 @@ int NumberOfFailHighMoves = 0;
 			}
 			dec_ply();
 			if (new_value >= beta) {
-//				if (SideInEndgame_for_null(my_color)) {
-					new_value = NegaScout(beta - 1, beta, new_depth, true, somewhere_in_null, false, beta_real, last_move, false);
-//				}
-				if (new_value >= beta) {
+//					new_value = NegaScout(beta - 1, beta, new_depth, true, somewhere_in_null, false, beta_real, last_move, false);
+//				if (new_value >= beta) {
 					if (d <= 0)  --MidNodes; else --NCMidNodes;
 					return new_value;
-				}
+//				}
 			}
 		}
 #endif
@@ -5564,14 +5637,20 @@ int NumberOfFailHighMoves = 0;
 						//if (move_depth > d-4) EnableHistory = true;
 						//else iid_depth = move_depth + 1;
 					}
-					if (d > IID_NUM && !EnableHistory) {
+					if (d > IID_NUM && !EnableHistory
+						) {
+						EnableHistory = false;
 						try {
 							MovesOrdered.unmark();
+							int val1 = g;//(alpha != beta - 1 ? g : (beta - 1));
 							while (MovesOrdered.next_unmarked())
 							{
 								c = MovesOrdered.best();
 								c.make();
-								int val1 = -NegaScout(-beta, -a, iid_depth, false, somewhere_in_null, beta_real, alpha_real, RelativeMove(c), false);
+								int val2=-INF;
+								if (val1!=-INF) val2=NegaScout(-val1+1, -val1, iid_depth, false, somewhere_in_null, beta_real, alpha_real, RelativeMove(c), false);
+								if (val2 > val1 || val2==-INF) val2 = -NegaScout(-beta, -val1, iid_depth, false, somewhere_in_null, beta_real, alpha_real, RelativeMove(c), false);
+								if (val2 > val1) val1 = val2;
 								MovesOrdered.unmarked_value() = val1;
 								c.unmake();
 							}
@@ -5622,15 +5701,18 @@ int NumberOfFailHighMoves = 0;
 //					continue;
 //				}
 #ifdef LMR
-				delay = d > 2 && !in_check && move_type == MoveGenerator::GeneratedMoves //(iid_value >> 10 <= 0)  // || move_count>=3) 
+				delay = CheckForEndgame && d > 2 && !in_check && move_type == MoveGenerator::GeneratedMoves //(iid_value >> 10 <= 0)  // || move_count>=3) 
 					//&& c.slot_taken == NO_SLOT 
-					&& c.became == c.initial && !is_king(c.initial) && !(is_pawn(c.initial));
+					&& c.became == c.initial && !is_king(c.initial) 
+					&& !(is_pawn(c.initial));
 				if (delay) {
 					++reduced;
-					if (d > 3 && reduced > 3
+					if (//alpha == beta - 1 && 
+						d > 3 && reduced > 3
 						)
 						new_depth = d - 3; else new_depth = d - 2;
 				}
+				if (delay && c.slot_taken == NO_SLOT) ++new_depth;
 #endif
 				//if (iid_value >> 10 <= 0 && move_count > 3) {
 				//	delay = true;
@@ -5922,16 +6004,22 @@ int NumberOfFailHighMoves = 0;
 			) {
 			CounterMove(d<=0,last_move).set(best_move);
 		}
-*/		
-		if (!best_move.empty()) GetHH(d <= 0, RelativeMove(best_move)).set((d + QUIESCENT_DEPTH + 1) << (g >= beta ? (beta_real ? 2 : 1) : 0));
+*/
+#ifdef HISTORY_HEURISTIC
 
+		if (!best_move.empty()) GetHH(d <= 0, RelativeMove(best_move)).set((d + QUIESCENT_DEPTH + 1) << (g >= beta ? 
+			2//(beta_real ? 2 : 1) 
+			: 0));
+#endif
+
+#ifdef KILLERS
 		if (g >= beta && 
 			!best_move.empty() //&& best_value >> 10 <= 0
 			&& best_move_type == MoveGenerator::GeneratedMoves //&& d>0 
 			) {
 			add_killer(best_move);
 		}
-
+#endif
 		dec_ply();
 		if (n != nullptr && !best_move.empty()) {
 			if (!(Hash == n->key)) n = nullptr;
@@ -6109,11 +6197,11 @@ void think(int output)
 	//	memset(history, 0, sizeof(history));
 	if (output == 1)
 		printf("ply      nodes  score  pv\n");
-	for (i = 1; i <= __min(MaxDepth,MAX_PLY-12); ++i) {
-//		if (i == 5)USE_TT = true;
+	for (i = 1; i <= __min(MaxDepth, MAX_PLY - 12); ++i) {
+		//		if (i == 5)USE_TT = true;
 
 		if (i < 6) QUIESCENT_DEPTH = 5;
-		else 
+		else
 			QUIESCENT_DEPTH = 11;
 
 		MinDepth = i;
@@ -6163,6 +6251,13 @@ void think(int output)
 			assert(test == Hash);
 		}
 		//4000
+
+		static double failhigh = 0;
+		static int numfailhigh = 0;
+		if (NumFailHighNodes != 0) {
+			failhigh += (double)NumberOnFirstMove / NumFailHighNodes;
+			++numfailhigh;
+		}
 		int y = x;
 		if (y > 500) y = 500;
 		if (y < -500) y = -500;
@@ -6171,7 +6266,7 @@ void think(int output)
 			printf("%3d  %9d  %7d  %5d %f nps ", i, Nodes, (pv[0].from / 10 - 2) * 8 + (pv[0].from % 10 - 1), y * 20, Nodes*1000.0 / (end_time - StartTime));   // @ED
 		else if (output == 2) {
 			printf("%d %d %d %d %.2g %.2g %.2g",
-				MinDepth, x, (end_time - StartTime) / 10, Nodes, (double)Nodes / MidNodes, (double)NCNodes / NCMidNodes, (double)NumberOnFirstMove / NumFailHighNodes
+				MinDepth, x, (end_time - StartTime) / 10, Nodes, (double)Nodes / MidNodes, (double)NCNodes / NCMidNodes, failhigh/numfailhigh
 		);
 			LOG(Log << "depth:"<<MinDepth<<" score" <<x<<" time:"<<(end_time - StartTime) / 10<<" Nodes:"<< Nodes<<" median branching factor quiescent:" <<(double)Nodes / MidNodes<<" median branching factor:"<<(double)NCNodes / NCMidNodes<<" fail high on first:"<< (double)NumberOnFirstMove / NumFailHighNodes)<<endl;
 		}
@@ -6781,6 +6876,7 @@ void scan_fen(char *fen)
 		p = fen[0] - 'a' + 1 + 10 * (10 - (fen[1] - '0'));
 		Players.pieces[Board[p]] = PAWN_JUST_ADVANCED;
 		En_passant_history[MoveNumber + history_len] = p;
+		En_passant_colors_history[MoveNumber + history_len] = color(Board[p]);
 	}else En_passant_history[MoveNumber + history_len] = 0;
 }
 /*
