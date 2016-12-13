@@ -459,6 +459,7 @@ void close_log()
 
 #endif
 
+bool EvalDirty;
 bool PawnsDirty;
 int PawnsValue;
 
@@ -496,6 +497,9 @@ const PieceSquareTable EmptySquareTable =
 };
 
 #define SCALE_PST 
+#define PAWN_SCALE 
+#define END_PAWN_SCALE 
+#define HAIR_PAWNS
 
 const PieceSquareTable KingEndSquareTableL = {
 	0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST,
@@ -806,9 +810,7 @@ const PieceSquareTable KnightSquareTableD = {
 	0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST, 0 SCALE_PST,
 };
 
-#define PAWN_SCALE /2
 
-#define HAIR_PAWNS
 
 #ifndef HAIR_PAWNS
 const PieceSquareTable PawnSquareTableL =
@@ -908,7 +910,7 @@ const PieceSquareTable PawnSquareTableD =
 	//A8                                H8
 };
 
-#define END_PAWN_SCALE +30
+//#define END_PAWN_SCALE +30
 const PieceSquareTable EndgamePawnSquareTableL =
 {
 	0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE, 0 END_PAWN_SCALE,
@@ -2104,6 +2106,7 @@ int NumPins[NUM_COLORS];
 
 Pos PawnsRank[NUM_COLORS][10];
 int PawnsTemp[NUM_COLORS];
+int EvalTemp[NUM_COLORS];
 int NumPinMoves[NUM_COLORS];
 Pos PinMoves[NUM_COLORS][64];
 
@@ -2164,21 +2167,28 @@ int SEE(Pos);
 
 void simple_calc()
 {
-	PawnsDirty = false;
+	EvalDirty = false;
 	for (int i = PAWN1;i < NUM_PIECE_SLOTS;++i) Players.pinned[i] = NotPinned;
-	PawnsTemp[LIGHT] = PawnsTemp[DARK] = 0;
+	EvalTemp[LIGHT] = EvalTemp[DARK] = 0;
 	for (int c = LIGHT;c < NUM_COLORS;++c) {
 		KP_END[c] = MaterialSums[c][MAJOR_MINOR_COUNT] == 0;
 		int base = base_by_color((Colors)c);
-		if (Players.pieces[BISHOP1 + base] != EMPTY && Players.pieces[BISHOP2 + base] != EMPTY) PawnsTemp[c] += 30;
-		if (Players.pieces[KNIGHT1 + base] != EMPTY && Players.pieces[KNIGHT2 + base] != EMPTY) PawnsTemp[c] += 30;
+//		if (Players.pieces[BISHOP1 + base] != EMPTY && Players.pieces[BISHOP2 + base] != EMPTY) EvalTemp[c] += 30;
+//		if (Players.pieces[KNIGHT1 + base] != EMPTY && Players.pieces[KNIGHT2 + base] != EMPTY) EvalTemp[c] += 30;
+		{
+			const int cq = count_slot(base + QUEENP);
+			const int cr = count_slot(base + ROOK1) + count_slot(base + ROOK2);
+			if (cq + cr > 1) {
+				EvalTemp[c] += (5 * cq + (cr << 1))*PAWN_VALUE >> 5;
+			}
+		}
 		NumPins[c] = calc_pins((Colors)c, Players.positions[KINGP + base], Pins[c], Pinners[c]);
 
 		for (int j = NumPins[c] - 1;j >= 0;--j) {
-			PawnsTemp[c] -= __max(EValuePerPiece[Players.pieces[Pins[c][j]]] - EValuePerPiece[Players.pieces[Pinners[c][j]]], 0) >> 4;
+			EvalTemp[c] -= __max(EValuePerPiece[Players.pieces[Pins[c][j]]] - EValuePerPiece[Players.pieces[Pinners[c][j]]], 0) >> 4;
 		}
 		for (int r = KNIGHT1;r <= QUEENP;++r) {
-			if (Players.pinned[r] != NotPinned) PawnsTemp[c] += mobility((PieceSlotType)(r + base));
+			if (Players.pinned[r] != NotPinned) EvalTemp[c] += mobility((PieceSlotType)(r + base));
 		}
 	}
 	if (MaterialSums[LIGHT][PAWN_COUNT] == 0 && MaterialSums[DARK][PAWN_COUNT] == 0 &&
@@ -2187,124 +2197,150 @@ void simple_calc()
 		if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT] != MaterialSums[DARK][MAJOR_MINOR_COUNT]) {
 			if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT] > MaterialSums[DARK][MAJOR_MINOR_COUNT])
 				if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT]<2 * ROOK_VALUE)
-					PawnsTemp[LIGHT] += 3 * 47 * CenterManhattanDistance[Players.positions[DARK_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
+					EvalTemp[LIGHT] += 3 * 47 * CenterManhattanDistance[Players.positions[DARK_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
 				else
 					if (MaterialSums[DARK][MAJOR_MINOR_COUNT]<2 * ROOK_VALUE)
-						PawnsTemp[DARK] += 3 * 47 * CenterManhattanDistance[Players.positions[LIGHT_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
+						EvalTemp[DARK] += 3 * 47 * CenterManhattanDistance[Players.positions[LIGHT_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
 		}
 	}
 	//*/
 
-	if (PlySide() == LIGHT) PawnsValue = PawnsTemp[LIGHT] - PawnsTemp[DARK];
-	else PawnsValue = PawnsTemp[DARK] - PawnsTemp[LIGHT];
+	if (PlySide() == LIGHT) PawnsValue = EvalTemp[LIGHT] - EvalTemp[DARK];
+	else PawnsValue = EvalTemp[DARK] - EvalTemp[LIGHT];
 }
 
 #define CALC_PAWN_SCALE 1
 
 void calc_pawns()
 {
-	PawnsDirty = false;
-	for (int i = 0;i < 10;++i) PromotionTempo[i] = NUM_COLORS;
+	EvalDirty = false;
+//	PawnsDirty = true;
 	for (int i = PAWN1;i < NUM_PIECE_SLOTS;++i) Players.pinned[i] = NotPinned;
-	PawnsTemp[LIGHT] = PawnsTemp[DARK] = 0;
-	for (int c = LIGHT;c < NUM_COLORS;++c) {
-/*
-		int base = base_by_color((Colors)c);
-		for (int r = PAWN1;r < NUM_UNCOLORED_PIECE_SLOTS;++r) {
-			if (Players.pieces[base + r] != EMPTY) {
-				PawnsTemp[c] += SEE(Players.positions[base+r]);
+	EvalTemp[LIGHT] = EvalTemp[DARK] = 0;
+	if (PawnsDirty) {
+		for (int i = 0;i < 10;++i) PromotionTempo[i] = NUM_COLORS;
+		PawnsTemp[LIGHT] = PawnsTemp[DARK] = 0;
+		for (int c = LIGHT;c < NUM_COLORS;++c) {
+			/*
+					int base = base_by_color((Colors)c);
+					for (int r = PAWN1;r < NUM_UNCOLORED_PIECE_SLOTS;++r) {
+						if (Players.pieces[base + r] != EMPTY) {
+							EvalTemp[c] += SEE(Players.positions[base+r]);
+						}
+					}
+			*/
+			KP_END[c] = MaterialSums[c][MAJOR_MINOR_COUNT] == 0;
+			LowestPassed[c] = 0;
+			for (int r = PAWN1;r <= PAWN8 + 2;++r) {
+				if (Players.pieces[base_by_color((Colors)c) + r] == EMPTY) {
+					pawn_weight[c][r] = 0;
+				}
+				else pawn_weight[c][r] = 2;
+				PawnsRank[c][r] = 0;
 			}
-		}
-*/
-		KP_END[c] = MaterialSums[c][MAJOR_MINOR_COUNT] == 0;
-		LowestPassed[c] = 0;
-		for (int r = PAWN1;r <= PAWN8 + 2;++r) {
-			if (Players.pieces[base_by_color((Colors)c)+r] == EMPTY) {
-				pawn_weight[c][r] = 0;
-			}
-			else pawn_weight[c][r] = 2;
-			PawnsRank[c][r] = 0;
 		}
 	}
 	for (int c = LIGHT;c < NUM_COLORS;++c) {
 		int base = base_by_color((Colors)c);
-		for (int r = PAWN1;r <= PAWN8;++r) {
-			const Pos pp = Players.positions[r + base];
-			if (pp != 0 && is_pawn(Players.pieces[r + base])) {
-				const Pos pr = RankCalc[c][pp];
-				const Pos col = SquareToColIndex[pp];
-				if (pr > PawnsRank[c][col]) PawnsRank[c][col] = pr;
+		{
+			const int cq = count_slot(base + QUEENP);
+			const int cr = count_slot(base + ROOK1) + count_slot(base + ROOK2);
+			if (cq + cr > 1) {
+				EvalTemp[c] += (5 * cq + (cr << 1))*PAWN_VALUE >> 5;
 			}
 		}
-		if (Players.pieces[BISHOP1 + base] != EMPTY && Players.pieces[BISHOP2 + base] != EMPTY) PawnsTemp[c] += 30;
-		if (Players.pieces[KNIGHT1 + base] != EMPTY && Players.pieces[KNIGHT2 + base] != EMPTY) PawnsTemp[c] += 30;
+
+		/*	int nonlinear=0;
+	if (count_slot(base + QUEENP) + count_slot(base + ROOK1) + count_slot(base + ROOK2) > 1) {
+		nonlinear = (5 * count_slot(base + QUEENP) + ((count_slot(base + ROOK1) + count_slot(base + ROOK2))<<1))*PAWN_VALUE>>5;
+	}
+*/
+		if (PawnsDirty) {
+			for (int r = PAWN1;r <= PAWN8;++r) {
+				const Pos pp = Players.positions[r + base];
+				if (pp != 0 && is_pawn(Players.pieces[r + base])) {
+					const Pos pr = RankCalc[c][pp];
+					const Pos col = SquareToColIndex[pp];
+					if (pr > PawnsRank[c][col]) PawnsRank[c][col] = pr;
+				}
+			}
+		}
+//		if (Players.pieces[BISHOP1 + base] != EMPTY && Players.pieces[BISHOP2 + base] != EMPTY) EvalTemp[c] += 30;
+//		if (Players.pieces[KNIGHT1 + base] != EMPTY && Players.pieces[KNIGHT2 + base] != EMPTY) EvalTemp[c] += 30;
 //mobility disabled
 		NumPins[c] = 0;//calc_pins((Colors)c, Players.positions[KINGP + base], Pins[c], Pinners[c]);
 ///*		
 		for (int j = NumPins[c]-1;j >=0;--j) {
-			PawnsTemp[c] -= __max(EValuePerPiece[Players.pieces[Pins[c][j]]] - EValuePerPiece[Players.pieces[Pinners[c][j]]], 0) >> 4;
+			EvalTemp[c] -= __max(EValuePerPiece[Players.pieces[Pins[c][j]]] - EValuePerPiece[Players.pieces[Pinners[c][j]]], 0) >> 4;
 		}
 		for (int r = KNIGHT1;r <= QUEENP;++r) {
-			if (Players.pinned[r] != NotPinned) PawnsTemp[c] += mobility((PieceSlotType)(r + base));
+			if (Players.pinned[r] != NotPinned) EvalTemp[c] += mobility((PieceSlotType)(r + base));
 		}
 //*/
+	}
+	
+	if (PawnsDirty) {
+		for (int c = LIGHT;c < NUM_COLORS;++c) {
+			int base = base_by_color((Colors)c);
+			int oc = other_color((Colors)c);
+			int other_base = base_by_color((Colors)oc);
+
+			// /*
+
+			for (int r = PAWN1;r <= PAWN8;++r) {
+				const Pos pp = Players.positions[r + base];
+				if (pp != 0 && is_pawn(Players.pieces[r + base])) {
+					const Pos pr = RankCalc[c][pp];
+					const Pos col = SquareToColIndex[pp];
+
+					if (PawnsRank[c][col] != pr) PawnsTemp[c] -= (int)(CALC_PAWN_SCALE * 10);//double pawn penalty
+					if (PawnsRank[c][col - 1] == 0 && PawnsRank[c][col + 1] == 0) PawnsTemp[c] -= (int)(CALC_PAWN_SCALE * 20); //isolated pawn penalty
+					else if (PawnsRank[c][col - 1] < pr && PawnsRank[c][col + 1] < pr) {
+						PawnsTemp[c] -= (int)(CALC_PAWN_SCALE * 8); //backward pawn penalty
+						pawn_weight[c][r] = 3;
+					}
+					if (9 - PawnsRank[oc][col - 1] >= pr && 9 - PawnsRank[oc][col] >= pr && 9 - PawnsRank[oc][col + 1] >= pr) {
+						//pr is a passed pawn
+						//if king can't reach pawn, then count promotion early
+						pawn_weight[c][r] = 6;
+						if (KP_END[oc] && __min(5, pr - 1) < ChebyshevDistance(pp + 10 * (pr - 1)*(c == LIGHT ? -1 : 1), Players.positions[KINGP + other_base]) - (PlySide() == oc ? 1 : 0))
+							PromotionTempo[(__min(4, pr - 2) << 1) + (PlySide() == oc ? 1 : 0)] = (Colors)c;//PawnsTemp[c] += QUEEN_VALUE-(82+30+90);
+						PawnsTemp[c] += //pawn_tables[c][pp] + 9;//
+							(int)(CALC_PAWN_SCALE *(7 - pr) * 40);
+						if (LowestPassed[c] < pr) LowestPassed[c] = pr;//calculate nearest passed pawn for bonus for rook on other side of passed pawn
+					}
+				}
+			}
+
+			//		*/
+			const Pos king_col = SquareToColIndex[Players.pieces[KINGP + base]];
+			PawnsTemp[c] += eval_king(king_col, (Colors)c, (Colors)oc);
+
+		}
+		for (int i = 0;i < 10;++i) {
+			if (PromotionTempo[i] != NUM_COLORS) {
+				PawnsTemp[PromotionTempo[i]] += QUEEN_VALUE - (82 + 30 + 90);
+				break;
+			}
+		}
 	}
 
 	for (int c = LIGHT;c < NUM_COLORS;++c) {
 		int base = base_by_color((Colors)c);
 		int oc = other_color((Colors)c);
 		int other_base = base_by_color((Colors)oc);
-
-		// /*
-		for (int r = PAWN1;r <= PAWN8;++r) {
-			const Pos pp = Players.positions[r + base];
-			if (pp != 0 && is_pawn(Players.pieces[r + base])) {
-				const Pos pr = RankCalc[c][pp];
-				const Pos col = SquareToColIndex[pp];
-
-				if (PawnsRank[c][col] != pr) PawnsTemp[c] -= (int)(CALC_PAWN_SCALE *10);//double pawn penalty
-				if (PawnsRank[c][col - 1] == 0 && PawnsRank[c][col + 1] == 0) PawnsTemp[c] -= (int)(CALC_PAWN_SCALE * 20); //isolated pawn penalty
-				else if (PawnsRank[c][col - 1] < pr && PawnsRank[c][col + 1] < pr) {
-					PawnsTemp[c] -= (int)(CALC_PAWN_SCALE * 8); //backward pawn penalty
-					pawn_weight[c][r] = 3;
-				}
-				if (9 - PawnsRank[oc][col - 1] >= pr && 9 - PawnsRank[oc][col] >= pr && 9 - PawnsRank[oc][col + 1] >= pr) {
-					//pr is a passed pawn
-					//if king can't reach pawn, then count promotion early
-					pawn_weight[c][r] = 6;
-					if (KP_END[oc] && __min(5, pr - 1) < ChebyshevDistance(pp + 10 * (pr - 1)*(c == LIGHT ? -1 : 1), Players.positions[KINGP + other_base]) - (PlySide() == oc ? 1 : 0))
-						PromotionTempo[(__min(4, pr - 2) << 1) + (PlySide() == oc ? 1 : 0)] = (Colors)c;//PawnsTemp[c] += QUEEN_VALUE-(82+30+90);
-					PawnsTemp[c] += //pawn_tables[c][pp] + 9;//
-						(int)(CALC_PAWN_SCALE *(7 - pr) * 40);
-					if (LowestPassed[c] < pr) LowestPassed[c] = pr;//calculate nearest passed pawn for bonus for rook on other side of passed pawn
-				}
-			}
-		}
-
-		//		*/
-		const Pos king_col = SquareToColIndex[Players.pieces[KINGP + base]];
-		PawnsTemp[c] += eval_king(king_col, (Colors)c, (Colors)oc);
 		for (int r = ROOK1;r <= ROOK2;++r) {
 			if (is_piece(Players.pieces[r + base])) {
 				const Pos rook_pos = Players.positions[r + base];
 				const Pos rook_col = SquareToColIndex[rook_pos];
 				if (PawnsRank[c][rook_col] == 0)
-					if (PawnsRank[oc][rook_col] == 0) PawnsTemp[c] += 15;//open file
-					else PawnsTemp[c] += 10; //semi open
-					if (RankCalc[c][rook_pos]<LowestPassed[c]) PawnsTemp[c] += 35;
-					else if (RankCalc[c][rook_pos] == 1)PawnsTemp[c] += 20;//rook attacking last row
+					if (PawnsRank[oc][rook_col] == 0) EvalTemp[c] += 15;//open file
+					else EvalTemp[c] += 10; //semi open
+					if (RankCalc[c][rook_pos] < LowestPassed[c]) EvalTemp[c] += 35;
+					else if (RankCalc[c][rook_pos] == 1)EvalTemp[c] += 20;//rook attacking last row
 			}
 		}
-
 	}
-
-	for (int i = 0;i < 10;++i) {
-		if (PromotionTempo[i] != NUM_COLORS) {
-			PawnsTemp[PromotionTempo[i]] += QUEEN_VALUE - (82 + 30 + 90);
-			break;
-		}
-	}
-
 	for (int kc = LIGHT;kc < NUM_COLORS;++kc) {
 		if (MaterialSums[kc][MAJOR_MINOR_COUNT] <= BISHOP_VALUE+KNIGHT_VALUE && MaterialSums[other_color((Colors)kc)][MAJOR_MINOR_COUNT] <= BISHOP_VALUE) {
 			int king_base = base_by_color((Colors)kc);
@@ -2320,7 +2356,7 @@ void calc_pawns()
 					}
 				}
 			}
-			PawnsTemp[kc] -= kp_tropism;
+			EvalTemp[kc] -= kp_tropism;
 		}
 	}
 	///*
@@ -2331,22 +2367,24 @@ void calc_pawns()
 		if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT] != MaterialSums[DARK][MAJOR_MINOR_COUNT]) {
 			if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT] > MaterialSums[DARK][MAJOR_MINOR_COUNT])
 				if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT]<2 * ROOK_VALUE)
-					PawnsTemp[LIGHT] += 3*47 * CenterManhattanDistance[Players.positions[DARK_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
+					EvalTemp[LIGHT] += 3*47 * CenterManhattanDistance[Players.positions[DARK_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
 			else
 				if (MaterialSums[DARK][MAJOR_MINOR_COUNT]<2 * ROOK_VALUE)
-					PawnsTemp[DARK] += 3* 47 * CenterManhattanDistance[Players.positions[LIGHT_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
+					EvalTemp[DARK] += 3* 47 * CenterManhattanDistance[Players.positions[LIGHT_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
 		}
 	}
 	//*/
 
-	if (PlySide() == LIGHT) PawnsValue = PawnsTemp[LIGHT] - PawnsTemp[DARK];
-	else PawnsValue = PawnsTemp[DARK] - PawnsTemp[LIGHT];
+
+	if (PlySide() == LIGHT) PawnsValue = PawnsTemp[LIGHT] + EvalTemp[LIGHT] - EvalTemp[DARK] - PawnsTemp[DARK];
+	else PawnsValue = PawnsTemp[DARK] + EvalTemp[DARK] - EvalTemp[LIGHT] - PawnsTemp[LIGHT];
+	PawnsDirty = false;
 }
 
 inline int positive_square_value_of_piece(Colors c, PieceType p, Pos s)
 {
-	if (!CheckForEndgame) 
-		return 0;
+//	if (!CheckForEndgame) 
+//		return 0;
 	if (!is_piece(p)) return 0;
 	//{}{}{} make more efficient later
 	return (!SideInEndgame(c) ? (c == LIGHT ? SquareTableL : SquareTableD)[p][s] : (c == LIGHT ? EndgameSquareTableL : EndgameSquareTableD)[p][s]);
@@ -2362,22 +2400,262 @@ inline int square_value_of_piece(Colors side, Colors c, PieceType p, Pos s)
 	return -v;
 }
 
+int sign(int i)
+{
+	if (i < 0) return -1;
+	return 1;
+}
+//model 1/30 chance of a pawn being queened
+//treat each pawn as an independent variable probabilty that one side will queen - probability the other side will queen
+float PbTable[10][17] = {
+	{//0
+		-.238,
+		-.211,
+		-.184,
+		-.156,
+		-.127,
+		-.0967,
+		-.0656,
+		-0.0333,
+		0,
+		0.0333,
+		.0656,
+		.0967,
+		.127,
+		.156,
+		.184,
+		.211,
+		.238,
+	},
+	{//1
+		0,
+		-0.204,
+		-.178,
+		-.151,
+		-.123,
+		-.0935,
+		-.0634,
+		-.322,
+		0,
+		.322,
+		.0634,
+		.0935,
+		.123,
+		.151,
+		.178,
+		.204,
+		0,
+	},
+	{//2k
+		0,
+		0,
+		-.172,
+		-.146,
+		-.119,
+		-.0904,
+		-.613,
+		-.0311,
+		0,
+		.0311,
+		.0613,
+		.0904,
+		.119,
+		.146,
+		.172,
+		0,
+		0,
+	},
+	{//3
+		0,
+		0,
+		0,
+		-.141,
+		-.115,
+		-.0874,
+		-.0592,
+		-.0301,
+		0,
+		.0301,
+		.0592,
+		.0874,
+		.115,
+		.141,
+		0,
+		0,
+		0,
+	},
+	{//4
+		0,
+		0,
+		0,
+		0,
+		-.111,
+		-.0844,
+		-.0572,
+		-.0291,
+		0,
+		.0291,
+		.0572,
+		.0844,
+		.111,
+		0,
+		0,
+		0,
+		0,
+	},
+	{//5
+		0,
+		0,
+		0,
+		0,
+		0,
+		-.0816,
+		-.0553,
+		-.0281,
+		0,
+		.0281,
+		.0553,
+		.0816,
+		0,
+		0,
+		0,
+		0,
+		0,
+	},
+	{//6
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		-.0534,
+		-.0272,
+		0,
+		.0272,
+		.0534,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+	},
+	{//6
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		-.0263,
+		0,
+		.0263,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+	},
+	{//7
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+	},
+	{//8
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+	0,
+},};
+
+inline int pawn_balance(Colors c)
+{
+	int pv;
+	float qv;
+	if (CheckForEndgame) {
+		pv = (int)(PAWN_VALUE*.95);
+		qv = (QUEEN_VALUE*.2);
+	}
+	else {
+		pv = (int)(EPAWN_VALUE*.95);
+		qv = (EQUEEN_VALUE);
+	}
+	int d = MaterialSums[c][PAWN_COUNT] - MaterialSums[other_color(c)][PAWN_COUNT];
+	int base = base_by_color(c);
+	int other_base = base_by_color(other_color(c));
+	if (d > 0) {
+		float interference = MaterialSums[other_color(c)][MAJOR_MINOR_COUNT] * (1.0 / ROOK_VALUE);
+		float help = MaterialSums[c][MAJOR_MINOR_COUNT] * (.5 / ROOK_VALUE);
+		qv = qv / interference*__min(help, interference);
+	}
+	else if (d < 0) {
+		float interference = MaterialSums[c][MAJOR_MINOR_COUNT] * (1.0 / ROOK_VALUE);
+		float help = MaterialSums[other_color(c)][MAJOR_MINOR_COUNT] * (.5 / ROOK_VALUE);
+		qv = qv / interference*__min(help, interference);
+	}
+	int nonlinear=0;
+	if (count_slot(base + QUEENP) + count_slot(base + ROOK1) + count_slot(base + ROOK2) > 1) {
+		nonlinear = (5 * count_slot(base + QUEENP) + ((count_slot(base + ROOK1) + count_slot(base + ROOK2))<<1))*PAWN_VALUE>>5;
+	}
+	if (count_slot(other_base + QUEENP) + count_slot(other_base + ROOK1) + count_slot(other_base + ROOK2) > 1) {
+		nonlinear -= (5 * count_slot(other_base + QUEENP) + ((count_slot(other_base + ROOK1) + count_slot(other_base + ROOK2)) << 1))*PAWN_VALUE >> 5;
+	}
+	int m = __min(MaterialSums[c][PAWN_COUNT], MaterialSums[other_color(c)][PAWN_COUNT]);
+	return pv*d+(int)qv*PbTable[m][d + 8]+(int)nonlinear;
+}
+
 inline int simple_eval()
 {
-	const Colors o = other_color(_PlySide);
-	const int material_count = MaterialSums[_PlySide][DONT_COUNT] + MaterialSums[_PlySide][PAWN_COUNT] + MaterialSums[_PlySide][MAJOR_MINOR_COUNT] - MaterialSums[o][PAWN_COUNT] - MaterialSums[o][MAJOR_MINOR_COUNT] - MaterialSums[o][DONT_COUNT];
+//	if (EvalDirty) simple_calc();
+		const Colors o = other_color(_PlySide);
+	const int material_count = //pawn_balance(_PlySide)+
+		MaterialSums[_PlySide][PAWN_COUNT] - MaterialSums[o][PAWN_COUNT] +
+		MaterialSums[_PlySide][DONT_COUNT] +  MaterialSums[_PlySide][MAJOR_MINOR_COUNT] - MaterialSums[o][MAJOR_MINOR_COUNT] - MaterialSums[o][DONT_COUNT];
 	return  material_count +
-		PersistantValue + EphemeralValue;
+		PersistantValue + EphemeralValue;// +PawnsValue;
 }
 inline int eval()
 {
-	if (CheckForEndgame) 
-		return simple_eval();
+//	if (CheckForEndgame) 
+//		return simple_eval();
 
-	if (PawnsDirty) //simple_calc();
+	if (EvalDirty) //simple_calc();
 			calc_pawns();
 	const Colors o = other_color(_PlySide);
-	const int material_count = MaterialSums[_PlySide][DONT_COUNT] + MaterialSums[_PlySide][PAWN_COUNT] + MaterialSums[_PlySide][MAJOR_MINOR_COUNT] - MaterialSums[o][PAWN_COUNT] - MaterialSums[o][MAJOR_MINOR_COUNT]- MaterialSums[o][DONT_COUNT];
+	const int material_count = //pawn_balance(_PlySide) + 
+		MaterialSums[_PlySide][PAWN_COUNT] - MaterialSums[o][PAWN_COUNT] +
+		MaterialSums[_PlySide][DONT_COUNT] + MaterialSums[_PlySide][MAJOR_MINOR_COUNT] - MaterialSums[o][MAJOR_MINOR_COUNT]- MaterialSums[o][DONT_COUNT];
 //	int silly = (Hash.high_mask() & 7);
 //	if (_PlySide == DARK) silly = -silly;
 	return  material_count +
@@ -2436,7 +2714,9 @@ inline void add_value(Colors side, PieceSlotType s)
 	
 	SufficientPieces += IsSufficient[t]?1:0;
 	MinorPieces[slot_side] += IsMinor[t];
-	MaterialSums[slot_side][PieceCountIndex[t]] += CheckForEndgame?  ValuePerPiece[t]: EValuePerPiece[t];
+//	if (PieceCountIndex[t] == PAWN_COUNT) ++MaterialSums[slot_side][PAWN_COUNT];
+//	else
+		MaterialSums[slot_side][PieceCountIndex[t]] += CheckForEndgame?  ValuePerPiece[t]: EValuePerPiece[t];
 
 	PersistantValue += square_value_of_piece(side, slot_side, t, p);
 	update_hash(s);
@@ -2449,7 +2729,9 @@ inline void sub_value(Colors side, PieceSlotType s)
 
 	SufficientPieces -= IsSufficient[t]?1:0;
 	MinorPieces[slot_side] -= IsMinor[t];
-	MaterialSums[slot_side][PieceCountIndex[t]] -= CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t];
+//	if (PieceCountIndex[t] == PAWN_COUNT) --MaterialSums[slot_side][PAWN_COUNT];
+//	else	
+		MaterialSums[slot_side][PieceCountIndex[t]] -= CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t];
 
 	PersistantValue -= square_value_of_piece(side, slot_side, t, p);
 	update_hash(s);
@@ -2526,12 +2808,6 @@ INITLINE
 }
 
 //from other player
-
-int sign(int i)
-{
-	if (i < 0) return -1;
-	return 1;
-}
 
 Move::Move(Pos f, Pos t, CheckForEnpassantEnum PARAMLINE) :from(f),
 to(t),
@@ -2703,8 +2979,8 @@ void Move::make()
 	add_value(side,slot_moving);
 //	piece_threats();
 //	board_consistent();
-	//if (is_pawn(initial) || is_king(initial) || is_pawn(piece_taken)) 
-		PawnsDirty = true;
+	if (is_pawn(initial) || is_king(initial) || is_pawn(piece_taken)) PawnsDirty = true;
+		EvalDirty = true;
 
 	RepeatList.add(color(slot_moving));
 	//board_consistent();
@@ -2785,8 +3061,8 @@ void Move::unmake()
 	}
 //*/
 	//	assert(hash == Hash);
-	//if (is_pawn(initial) || is_king(initial) || is_pawn(piece_taken)) 
-		PawnsDirty = true;
+	if (is_pawn(initial) || is_king(initial) || is_pawn(piece_taken)) PawnsDirty = true;
+		EvalDirty = true;
 	//board_consistent();
 }
 
@@ -2879,6 +3155,7 @@ void init_board()
 	for (int c=0;c<NUM_COLORS;++c) for (int i=0;i<NUM_MATERIAL_INDEXES;++i) MaterialSums[c][i]=0;
 	PawnsValue = 0;
 	PawnsDirty = true;
+	EvalDirty = true;
 	for (int i = 0;i < MAX_MOVES + MAX_PLY;++i) {
 		En_passant_history[i] = 0;
 		En_passant_colors_history[i] = NO_COLOR;
@@ -2986,7 +3263,9 @@ bool parse_move(Move &m, char *s)
 	Pos from = s[0] - 'a' + 1 + 10 * (10 - (s[1] - '0'));
 	Pos to = s[2] - 'a' + 1 + 10 * (10 - (s[3] - '0'));
 	PieceType became = EMPTY;
-	switch (s[4]) {
+	int became_char = 4;
+	if (s[4] == '=' ) ++became_char;
+	switch (s[became_char]) {
 	case 'N':
 	case 'n':
 		became = KNIGHT;
@@ -3296,7 +3575,7 @@ public:
 		upper_exact = lower_exact = false;
 	}
 
-	int get_eval()
+	int get_eval(bool simple)
 	{
 		if (upper_exact) {
 			if (lower_exact) {
@@ -3310,6 +3589,7 @@ public:
 		if (eval_copy != INF) return eval_copy;
 		if (upper_bound_depth != -127 && lower_bound_depth != -127) return (upper_bound + lower_bound) >> 1;
 //		if (eval_copy == INF) 
+		if (simple) return simple_eval();
 			eval_copy = eval();
 		return eval_copy;
 	}
@@ -5480,13 +5760,15 @@ int NumberOfFailHighMoves = 0;
 #endif
 	int g, a;
 	int second_best_value = INF;
+	const bool ninpv = alpha == beta - 1;
 
 	if (d == -QUIESCENT_DEPTH) {
-		g = (n == nullptr ? eval() : n->get_eval()); /* leaf node */
+		g = (n == nullptr ? (ninpv ? simple_eval() :eval()) : n->get_eval(ninpv)); /* leaf node */
+		//if (ninpv && g < beta && beta - g < PAWN_VALUE) g = (n == nullptr ? eval(): n->get_eval(false));
 		//if (MinDepth<6 && last_piece_moved != OFF_BOARD) g = g - SEE(Players.positions[last_piece_moved]);
 	}
 	else {
-		int val = (n == nullptr ? eval() : n->get_eval());
+		int val = (n == nullptr ? simple_eval() : n->get_eval(true));
 		if (last_piece_moved != OFF_BOARD) val = val - SEE(Players.positions[last_piece_moved]);
 		const bool in_check = king_in_check(PlySide());
 
@@ -5712,7 +5994,7 @@ int NumberOfFailHighMoves = 0;
 						)
 						new_depth = d - 3; else new_depth = d - 2;
 				}
-				if (delay && c.slot_taken == NO_SLOT) ++new_depth;
+				if (delay && c.slot_taken == NO_SLOT && a != beta - 1) ++new_depth;
 #endif
 				//if (iid_value >> 10 <= 0 && move_count > 3) {
 				//	delay = true;
@@ -5748,7 +6030,7 @@ int NumberOfFailHighMoves = 0;
 					else if (delay);
 
 					else if (a == beta - 1) {
-						val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, false);
+							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, false);
 //						if (new_depth!=d-1 && val1 > a) {
 //							delay = false;
 //							new_depth = d - 1;
@@ -6026,7 +6308,7 @@ int NumberOfFailHighMoves = 0;
 			else n->set_move(best_move,d);
 		}
 		if (g == -INF) {
-			if (d < 1) return (n == nullptr?eval():n->get_eval());
+			if (d < 1) return (n == nullptr? (alpha == beta - 1 ? simple_eval() : eval()) :n->get_eval(alpha == beta - 1));
 			if (in_check) return -KING_VALUE-d-QUIESCENT_DEPTH;//includes waiting penalty
 			return 0;
 		}
