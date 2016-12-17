@@ -1657,6 +1657,16 @@ struct HH
 	long long value;
 	void set(int v)
 	{
+/*		int t = v;
+		int t2 = v;
+		while (t != 0) {
+			t >>= 2;
+			t2 >>= 1;
+		}
+		++t2;
+		if (time != history_len + ClearHash) value = v*v*t2;
+		else value += v*v*t2;
+*/
 		if (time != history_len + ClearHash) value = v*v;
 		else value += v*v;
 		time = history_len + ClearHash;
@@ -1749,7 +1759,7 @@ struct MoveList {
 //		if (CurrentPly > 10) return;
 		for (int i = first();i < base[ply]; ++i) {
 			if (!moves[i].empty()) {
-				value[i] += GetHH(q, RelativeMove(moves[i])).get();
+				value[i] += (GetHH(q, RelativeMove(moves[i])).get()+15)>>4;
 			}
 		}
 		best_index[ply] = second_best_index[ply] = third_best_index[ply] = fourth_best_index[ply] = -1;
@@ -3142,8 +3152,14 @@ int BestMovePerPlyIndex[MAX_PLY];
 
 RelativeMove BestMovePerPly[8][MAX_PLY];
 
+long long FailHighCount;
+long long FailHighTotal;
+
 void init_board()
 {
+	FailHighCount=0;
+	FailHighTotal=0;
+
 	for (int i = 0;i < MAX_PLY;++i) {
 		for (int j = 0;j < 4; ++j) {
 			//			CaptureKillers.BestMovePerPly[j][i].clear();
@@ -3705,7 +3721,7 @@ bool order_value(int &result, Colors c,Move &m, int depth)
 #define GENERATE_TO MovesOrdered
 
 
-#define IID_NUM 7
+#define IID_NUM 3
 
 //#define CAP_SCALE(x,y) (((x)<<10)-(y))
 #define CAP_SCALE(x,y) ((x)<<10)
@@ -5694,10 +5710,10 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 	HashTableEntry *n=nullptr;
 	Move m2;
 	int move_depth = -127;
+#ifndef IGNORE_TT
 	//if (d>0)
 	{
 		n = GetOrMakeHash(d <= 0);
-#ifndef IGNORE_TT
 		int lower = n->get_lower(d);
 		int upper = n->get_upper(d);
 		bool hash_move_repeat = false;
@@ -5718,6 +5734,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 		}
 		else if (CurrentPly == 0) m2 = Ply0Move;
 		if (!hash_move_repeat && lower >= beta) {
+
 			if (CurrentPly == 0) {
 				if (!m2.empty()) {
 					Ply0Move = m2;
@@ -5799,7 +5816,7 @@ int NumberOfFailHighMoves = 0;
 
 #ifdef FUTILITY
 		if (CheckForEndgame &&
-			alpha == beta - 1 && !in_check && CurrentPly > 0 && !(close_to_mate(alpha) || close_to_mate(beta))) {
+			alpha == beta - 1 && !in_check && CurrentPly > 3 && !(close_to_mate(alpha) || close_to_mate(beta))) {
 			if (n != nullptr && n->get_upper(d - 1) + ROOK_VALUE < alpha) {
 				if (d <= 0) --MidNodes; else --NCMidNodes;
 				return n->get_upper(d - 1);
@@ -5833,7 +5850,7 @@ int NumberOfFailHighMoves = 0;
 
 #ifdef REVERSE_FUTILITY
 		if (CheckForEndgame &&
-			alpha == beta - 1 && !in_check && CurrentPly > 0 && !(close_to_mate(alpha) || close_to_mate(beta))) {
+			alpha == beta - 1 && !in_check && CurrentPly > 3 && !(close_to_mate(alpha) || close_to_mate(beta))) {
 			if (n != nullptr && n->get_lower(d - 1) - BISHOP_VALUE > beta) {
 				if (d <= 0) { --MidNodes; }
 				else {
@@ -5930,6 +5947,7 @@ int NumberOfFailHighMoves = 0;
 
 		bool in_endgame = SideInEndgame(my_color);
 
+		int num_moves = 0;
 		if (SufficientPieces == 0 && MinorPieces[LIGHT] < 2 && MinorPieces[DARK] < 2) {
 			//g = 0;
 			if ((CurrentPly & 1) == 1) g = -2 * PAWN_VALUE;
@@ -5940,6 +5958,7 @@ int NumberOfFailHighMoves = 0;
 		else {
 			int move_value;
 			while ((g < beta) && -INF != (move_value = moves.next(c, &move_type, &iid_value))) {
+				++num_moves;
 				if (a != alpha) EnableHistory = false;
 				if (move_type == MoveGenerator::IID) {
 
@@ -6027,7 +6046,7 @@ int NumberOfFailHighMoves = 0;
 						)
 						new_depth = d - 3; else new_depth = d - 2;
 				}
-				if (delay && c.slot_taken == NO_SLOT && a != beta - 1) ++new_depth;
+				if (delay && c.slot_taken != NO_SLOT && a != beta - 1) ++new_depth;
 #endif
 //				if (a != beta - 1 && (CurrentPly & 3) == 1) ++new_depth;
 				//if (iid_value >> 10 <= 0 && move_count > 3) {
@@ -6300,6 +6319,9 @@ int NumberOfFailHighMoves = 0;
 		MovesIID.dec_ply();
 
 		if (g >= beta) {
+			if (num_moves) ++FailHighCount;
+			FailHighTotal+=num_moves;
+
 			++NumFailHighNodes;
 			if (move_count == 1) ++NumberOnFirstMove;
 		}
@@ -6328,12 +6350,13 @@ int NumberOfFailHighMoves = 0;
 		}
 #endif
 		dec_ply();
+#ifndef IGNORE_TT
 
 		if (n != nullptr && !(n->key == Hash)) {
 			if (alpha != beta-1) n = GetOrMakeHash(d <= 0);
 			else n = nullptr;
 		}
-
+#endif
 		if (n != nullptr && !best_move.empty()) {
 //			if (!(Hash == n->key)) n = nullptr;
 //			else 
@@ -6589,8 +6612,10 @@ void think(int output)
 		if (output == 1)
 			printf("%3d  %9d  %7d  %5d %f nps ", i, Nodes, (pv[0].from / 10 - 2) * 8 + (pv[0].from % 10 - 1), y * 20, Nodes*1000.0 / (end_time - StartTime));   // @ED
 		else if (output == 2) {
-			printf("%d %d %d %d %.2g %.2g %.2g",
-				MinDepth, x, (end_time - StartTime) / 10, Nodes, (double)Nodes / MidNodes, (double)NCNodes / NCMidNodes, failhigh/numfailhigh
+			printf("%d %d %d %d %.4g %.2g %.2g %.2g",
+				MinDepth, x, (end_time - StartTime) / 10, Nodes, (double)FailHighTotal /FailHighCount,
+
+				(double)Nodes / MidNodes, (double)NCNodes / NCMidNodes, failhigh/numfailhigh
 		);
 			LOG(Log << "depth:"<<MinDepth<<" score" <<x<<" time:"<<(end_time - StartTime) / 10<<" Nodes:"<< Nodes<<" median branching factor quiescent:" <<(double)Nodes / MidNodes<<" median branching factor:"<<(double)NCNodes / NCMidNodes<<" fail high on first:"<< (double)NumberOnFirstMove / NumFailHighNodes)<<endl;
 		}
@@ -7245,7 +7270,7 @@ void test_init()
     e5      1200
  
 */
-//	scan_fen("2nq1nk1/5p1p/4p1pQ/pb1pP1NP/1p1P2P1/1P4N1/P4PB1/6K1 w - - 0 1");
+	scan_fen("2nq1nk1/5p1p/4p1pQ/pb1pP1NP/1p1P2P1/1P4N1/P4PB1/6K1 w - - 0 1");
 /*  Be4     2600
     Nxh7    1950
     hxg6    1900 *y
@@ -7307,7 +7332,6 @@ Be5     1200
 	x
 	*/
 //	scan_fen("r1bq1rk1/p4ppp/1pnp1n2/2p5/2PPpP2/1NP1P3/P3B1PP/R1BQ1RK1 b - - 0 1");
-	scan_fen("r3qb1k/1b4p1/p2pr2N/3n4/Pn2N3/2p3RP/1B3PP1/1B1QR1K1 w - - 0 27");
 	/*    Qd7     2600
     Ne8     2000
     h5      1800
@@ -7318,6 +7342,7 @@ Be5     1200
     Re8     1400
 	y 
 	*/
+	//	scan_fen("r3qb1k/1b4p1/p2pr2N/3n4/Pn2N3/2p3RP/1B3PP1/1B1QR1K1 w - - 0 27");
 	//	for (int i = 0;i < NUM_PIECE_SLOTS;++i) Players.pieces[i] = (PieceType)players_init[i];
 //	for (int i = 0;i < BOARD_SIZE;++i) {
 //		Board[i] = (PieceSlotType)board_init[i];
