@@ -78,7 +78,7 @@ sf 6
 //#define DISABLE_TIME
 
 #define HASH_TABLE
-bool DisableBook=false;
+bool DisableBook = false;
 int FakeLen = 0;
 const int BOARD_SIZE = 120;
 bool CheckForEndgame;
@@ -137,7 +137,7 @@ inline bool is_sliding_type(PieceType p)
 
 inline bool is_king(PieceType p)
 {
-	return p > EMPTY && p<= KING_CASTLED;
+	return p > EMPTY && p <= KING_CASTLED;
 }
 
 inline bool is_pawn(PieceType p)
@@ -152,38 +152,38 @@ inline bool is_piece(PieceType p)
 
 enum PieceSlotType : signed char {
 	LIGHT_SLOT = 0,
-	PAWN1 = 0,	
-	LIGHT_PAWN1 = 0,	
-	PAWN2 = 1,	
-	LIGHT_PAWN2 = 1,	
-	PAWN3 = 2,	
-	LIGHT_PAWN3 = 2,	
-	PAWN4 = 3,	
-	LIGHT_PAWN4 = 3,	
-	PAWN5 = 4,	
-	LIGHT_PAWN5 = 4,	
-	PAWN6 = 5,	
-	LIGHT_PAWN6 = 5,	
-	PAWN7 = 6,	
-	LIGHT_PAWN7 = 6,	
-	PAWN8 = 7,	
-	LIGHT_PAWN8 = 7,	
-	KNIGHT1 = 8,	
-	LIGHT_KNIGHT1 = 8,	
-	KNIGHT2 = 9,	
-	LIGHT_KNIGHT2 = 9,	
-	BISHOP1 = 10, 
-	LIGHT_BISHOP1 = 10, 
-	BISHOP2 = 11, 
-	LIGHT_BISHOP2 = 11, 
-	ROOK1 = 12,	
-	LIGHT_ROOK1 = 12,	
-	ROOK2 = 13,	
-	LIGHT_ROOK2 = 13,	
-	QUEENP = 14,	
-	LIGHT_QUEENP = 14,	
-	KINGP = 15,	
-	LIGHT_KINGP = 15,	
+	PAWN1 = 0,
+	LIGHT_PAWN1 = 0,
+	PAWN2 = 1,
+	LIGHT_PAWN2 = 1,
+	PAWN3 = 2,
+	LIGHT_PAWN3 = 2,
+	PAWN4 = 3,
+	LIGHT_PAWN4 = 3,
+	PAWN5 = 4,
+	LIGHT_PAWN5 = 4,
+	PAWN6 = 5,
+	LIGHT_PAWN6 = 5,
+	PAWN7 = 6,
+	LIGHT_PAWN7 = 6,
+	PAWN8 = 7,
+	LIGHT_PAWN8 = 7,
+	KNIGHT1 = 8,
+	LIGHT_KNIGHT1 = 8,
+	KNIGHT2 = 9,
+	LIGHT_KNIGHT2 = 9,
+	BISHOP1 = 10,
+	LIGHT_BISHOP1 = 10,
+	BISHOP2 = 11,
+	LIGHT_BISHOP2 = 11,
+	ROOK1 = 12,
+	LIGHT_ROOK1 = 12,
+	ROOK2 = 13,
+	LIGHT_ROOK2 = 13,
+	QUEENP = 14,
+	LIGHT_QUEENP = 14,
+	KINGP = 15,
+	LIGHT_KINGP = 15,
 	UNCOLORED_SLOT_MASK = 15,
 	NUM_UNCOLORED_PIECE_SLOTS = 16,
 	DARK_SLOT = 16,
@@ -249,7 +249,7 @@ enum PinTypes { NotPinned, PartiallyPinned, Pinned };
 struct PlayersType {
 	PlayersPieces pieces;
 	PlayersPositions positions;
-	PinTypes pinned[NUM_PIECE_SLOTS+2];
+	PinTypes pinned[NUM_PIECE_SLOTS + 2];
 };
 
 #define a1 91
@@ -376,7 +376,7 @@ const PieceType ChangePieceOnMove[] =
 
 //
 
-enum MaterialIndexes { DONT_COUNT=0, PAWN_COUNT=1,MAJOR_MINOR_COUNT =2, NUM_MATERIAL_INDEXES=3 };
+enum MaterialIndexes { DONT_COUNT = 0, PAWN_COUNT = 1, MAJOR_MINOR_COUNT = 2, NUM_MATERIAL_INDEXES = 3 };
 
 const MaterialIndexes PieceCountIndex[] =
 {
@@ -1020,7 +1020,7 @@ const signed int * SquareTableL[NUM_PIECE_TYPES] = {
 	RookSquareTableL,
 	RookSquareTableL,
 	EmptySquareTable,//
-//	QueenSquareTableL, //bad
+					 //	QueenSquareTableL, //bad
 };
 const signed int * SquareTableD[NUM_PIECE_TYPES] = {
 	EmptySquareTable,
@@ -1034,34 +1034,34 @@ const signed int * SquareTableD[NUM_PIECE_TYPES] = {
 	RookSquareTableD,
 	RookSquareTableD,
 	EmptySquareTable,//
-	//QueenSquareTableD, //bad
+					 //QueenSquareTableD, //bad
 };
 
 const signed int * EndgameSquareTableL[NUM_PIECE_TYPES] = {
 	EmptySquareTable,
-		KingEndSquareTableL, 
-		KingEndSquareTableL,  
-		KingEndSquareTableL, 
-		EndgamePawnSquareTableL,
-		EndgamePawnSquareTableL,
-		EndgameKnightSquareTableL, 
-		EndgameBishopSquareTableL,
-		EndgameRookSquareTableL,
-		EndgameRookSquareTableL,
+	KingEndSquareTableL,
+	KingEndSquareTableL,
+	KingEndSquareTableL,
+	EndgamePawnSquareTableL,
+	EndgamePawnSquareTableL,
+	EndgameKnightSquareTableL,
+	EndgameBishopSquareTableL,
+	EndgameRookSquareTableL,
+	EndgameRookSquareTableL,
 	EndgameQueenSquareTableL, //ok
 };
 
 const signed int * EndgameSquareTableD[NUM_PIECE_TYPES] = {
 	EmptySquareTable,
-		KingEndSquareTableD, 
-		KingEndSquareTableD,  
-		KingEndSquareTableD, 
-		EndgamePawnSquareTableD,
-		EndgamePawnSquareTableD,
-		EndgameKnightSquareTableD, 
-		EndgameBishopSquareTableD,
-		EndgameRookSquareTableD,
-		EndgameRookSquareTableD,
+	KingEndSquareTableD,
+	KingEndSquareTableD,
+	KingEndSquareTableD,
+	EndgamePawnSquareTableD,
+	EndgamePawnSquareTableD,
+	EndgameKnightSquareTableD,
+	EndgameBishopSquareTableD,
+	EndgameRookSquareTableD,
+	EndgameRookSquareTableD,
 	EndgameQueenSquareTableD, //ok
 };
 #endif
@@ -1082,7 +1082,7 @@ const Pos BISHOP_THREAT_DESC[] = { EXPANDING_THREATS,4,+9,+11,-9,-11 };
 int PersistantValue;
 int EphemeralValue;
 
-int CurrentPly=0;
+int CurrentPly = 0;
 PlayersType Players;
 #ifdef NDEBUG
 #define board_consistent()
@@ -1370,7 +1370,7 @@ int horizontal_distance_from_king(PieceSlotType s)
 {
 	return abs(SquareToColIndex[Players.positions[s]] - SquareToColIndex[Players.positions[KINGP + base_by_color(color(s))]]);
 }
-int horizontal_distance_from_king(PieceSlotType s,Pos p)
+int horizontal_distance_from_king(PieceSlotType s, Pos p)
 {
 	return abs(SquareToColIndex[p] - SquareToColIndex[Players.positions[KINGP + base_by_color(color(s))]]);
 }
@@ -1384,7 +1384,7 @@ int shielding_king(PieceSlotType s)
 
 int shielding_king(PieceSlotType s, Pos p)
 {
-	if (in_front_of_king(s)) return horizontal_distance_from_king(s,p);
+	if (in_front_of_king(s)) return horizontal_distance_from_king(s, p);
 	return 8;
 }
 
@@ -1425,10 +1425,10 @@ bool SideInEndgame(Colors s)
 
 	return Players.pieces[QUEENP + base] == EMPTY ||
 		(
-	2 > count_slot(ROOK1 + base) + count_slot(ROOK2 + base) + count_slot(QUEENP + base)
-	&& 2 > count_slot(BISHOP1 + base) + count_slot(BISHOP2 + base)
-	+ count_slot(KNIGHT1 + base) + count_slot(KNIGHT2 + base));
-	
+			2 > count_slot(ROOK1 + base) + count_slot(ROOK2 + base) + count_slot(QUEENP + base)
+			&& 2 > count_slot(BISHOP1 + base) + count_slot(BISHOP2 + base)
+			+ count_slot(KNIGHT1 + base) + count_slot(KNIGHT2 + base));
+
 }
 
 int simple_eval();
@@ -1451,12 +1451,12 @@ struct Move
 	PieceSlotType slot_taken;
 	PieceType piece_taken;
 	Castling castling;
-//	int see;
+	//	int see;
 	short bonus;
-//	short perm_bonus;
-//	HashType hash;
+	//	short perm_bonus;
+	//	HashType hash;
 	DEFLINE
-	Move &set_bonus(short b) { bonus = b; return *this; }
+		Move &set_bonus(short b) { bonus = b; return *this; }
 
 
 
@@ -1466,63 +1466,63 @@ struct Move
 		const Colors my_side = color(Board[from]);
 
 		if (my_side == computer_side &&
-			piece_taken != EMPTY) {
-			if (simple_eval(my_side)>0)
-				bonus += 5;//transaction bonus to make computer aggressive
-			else
-				bonus -= 5;
+		piece_taken != EMPTY) {
+		if (simple_eval(my_side)>0)
+		bonus += 5;//transaction bonus to make computer aggressive
+		else
+		bonus -= 5;
 		}
 		const Colors other_side = other_color(my_side);
 		int material_threat = MaterialSums[other_side][MAJOR_MINOR_COUNT];
 		if (is_pawn(piece_taken)) {
-			switch (shielding_king(slot_taken)) {
-			case 0: bonus += 40* material_threat>>12; break;
-			case 1: bonus += 20 * material_threat >> 12;
-			}
+		switch (shielding_king(slot_taken)) {
+		case 0: bonus += 40* material_threat>>12; break;
+		case 1: bonus += 20 * material_threat >> 12;
+		}
 		}
 		if (is_pawn(initial)) {
-			int shielding = shielding_king(Board[from]);
-			if (shielding < 2) {
-				int to_shielding = shielding_king(Board[from], to);
-				if (to_shielding > shielding) {
-					switch (shielding) {
-					case 0: bonus -= 20 * material_threat >> 12; break;
-					case 1: bonus -= 40 * material_threat >> 12;
-					}
-				}
-				else {
-					switch (shielding) {
-					case 0: bonus -= 20 * material_threat >> 12; break;
-					case 1: bonus -= 10 * material_threat >> 12;
-					}
-				}
-			}
+		int shielding = shielding_king(Board[from]);
+		if (shielding < 2) {
+		int to_shielding = shielding_king(Board[from], to);
+		if (to_shielding > shielding) {
+		switch (shielding) {
+		case 0: bonus -= 20 * material_threat >> 12; break;
+		case 1: bonus -= 40 * material_threat >> 12;
 		}
-//*/
-/*
+		}
+		else {
+		switch (shielding) {
+		case 0: bonus -= 20 * material_threat >> 12; break;
+		case 1: bonus -= 10 * material_threat >> 12;
+		}
+		}
+		}
+		}
+		//*/
+		/*
 		if (!SideInEndgame(my_side)) {
-			int material_threat = MaterialSums[other_side][MAJOR_MINOR_COUNT];
-			if (castling == NotCastling) {
-				if (initial == KING_NOT_MOVED || initial == ROOK_NOT_MOVED) {
-					switch (ways_can_castle(color(Board[from]))) {
-					case 1: bonus -= 30* material_threat>>11; break;
-					case 2: if (initial == KING_NOT_MOVED) bonus -= 60 * material_threat >> 11; else bonus -= 30 * material_threat >> 11;
-					}
-				}
-				else if (became == KING || became == KING_CASTLED) bonus -= 5* material_threat >> 11;
-			}
+		int material_threat = MaterialSums[other_side][MAJOR_MINOR_COUNT];
+		if (castling == NotCastling) {
+		if (initial == KING_NOT_MOVED || initial == ROOK_NOT_MOVED) {
+		switch (ways_can_castle(color(Board[from]))) {
+		case 1: bonus -= 30* material_threat>>11; break;
+		case 2: if (initial == KING_NOT_MOVED) bonus -= 60 * material_threat >> 11; else bonus -= 30 * material_threat >> 11;
 		}
-//*/
+		}
+		else if (became == KING || became == KING_CASTLED) bonus -= 5* material_threat >> 11;
+		}
+		}
+		//*/
 	}
 	void clear() { from = 0; }
 	bool operator == (const Move &o) {
 		if (from != o.from) return false;
-		return (to == o.to && became == o.became)|| from == 0;
+		return (to == o.to && became == o.became) || from == 0;
 	}
 	bool empty() const {
 		return from == 0;
 	}
-	Move():from(0) {}
+	Move() :from(0) {}
 	//	Move(Pos f, Pos t) :from(f), to(t), initial(EMPTY), promotion(EMPTY) {}
 	Move(Pos f, Pos t PARAMLINE);
 	Move(Pos f, Pos t, Castling c PARAMLINE);
@@ -1550,8 +1550,8 @@ struct RelativeMove
 	Pos from_pos;
 	Pos to;
 	PieceType promotion;
-	RelativeMove(const Move &m) :from(m.from==0?NO_SLOT:Board[m.from]), from_pos(m.from), to(m.to), promotion(m.became),
-		slot_taken(m.slot_taken){}
+	RelativeMove(const Move &m) :from(m.from == 0 ? NO_SLOT : Board[m.from]), from_pos(m.from), to(m.to), promotion(m.became),
+		slot_taken(m.slot_taken) {}
 	void operator = (const RelativeMove &m)
 	{
 		from = m.from;
@@ -1561,24 +1561,24 @@ struct RelativeMove
 		promotion = m.promotion;
 	}
 
-	void operator = (const Move &m) 
+	void operator = (const Move &m)
 	{
 		from_pos = m.from;
 		slot_taken = m.slot_taken;
 		from = m.from == 0 ? NO_SLOT : Board[m.from];
-		to = m.to; 
+		to = m.to;
 		promotion = m.became;
 	}
 	RelativeMove() :from(NO_SLOT) {}
-	RelativeMove(const RelativeMove &m) :from(m.from),from_pos(m.from_pos), to(m.to), promotion(m.promotion) {}
+	RelativeMove(const RelativeMove &m) :from(m.from), from_pos(m.from_pos), to(m.to), promotion(m.promotion) {}
 	bool operator == (const RelativeMove &m) const
 	{
-		return (from == NO_SLOT && m.from == NO_SLOT) || (from == m.from && from_pos==m.from_pos && to == m.to && slot_taken==m.slot_taken 
+		return (from == NO_SLOT && m.from == NO_SLOT) || (from == m.from && from_pos == m.from_pos && to == m.to && slot_taken == m.slot_taken
 			&& promotion == m.promotion);
 	}
 	bool operator == (const Move &m) const
 	{
-		return (from == NO_SLOT && m.from == 0) || (from != NO_SLOT && from_pos==m.from &&  slot_taken == m.slot_taken 
+		return (from == NO_SLOT && m.from == 0) || (from != NO_SLOT && from_pos == m.from &&  slot_taken == m.slot_taken
 			&& from == Board[m.from] && to == m.to && promotion == m.became);
 	}
 	bool empty() const { return from == NO_SLOT; }
@@ -1622,7 +1622,7 @@ struct SortingMoveList {
 	void push(Move m, int key)
 	{
 		moves[base] = m;
-//		moves[base].see = key;
+		//		moves[base].see = key;
 		entries[base].index = base;
 		entries[base++].key = key;
 	}
@@ -1649,29 +1649,107 @@ struct SortingMoveList {
 	void pop() { --base; }
 };
 
-int history_len=0;
+int history_len = 0;
+int NCNodes = 0;
+int NCMidNodes = 0;
+
+double log_table[] =
+{
+	0,
+	0.6931471806,
+	1.0986122887,
+	1.3862943611,
+	1.6094379124,
+	1.7917594692,
+	1.9459101491,
+	2.0794415417,
+	2.1972245773,
+	2.302585093,
+	2.3978952728,
+	2.4849066498,
+	2.5649493575,
+	2.6390573296,
+	2.7080502011,
+	2.7725887222,
+	2.8332133441,
+	2.8903717579,
+	2.9444389792,
+	2.9957322736,
+	3.0445224377,
+	3.0910424534,
+	3.1354942159,
+	3.1780538303,
+	3.2188758249,
+	3.258096538,
+	3.295836866,
+	3.3322045102,
+	3.36729583,
+	3.4011973817,
+	3.4339872045,
+	3.4657359028,
+	3.4965075615,
+	3.5263605246,
+	3.5553480615,
+	3.5835189385,
+	3.6109179126,
+	3.6375861597,
+	3.6635616461,
+	3.6888794541,
+	3.7135720667,
+	3.7376696183,
+	3.7612001157,
+	3.7841896339,
+	3.8066624898,
+	3.8286413965,
+	3.8501476017,
+	3.8712010109,
+	3.8918202981,
+	3.9120230054,
+	3.9318256327,
+	3.9512437186,
+	3.9702919136,
+	3.9889840466,
+	4.0073331852,
+	4.0253516907,
+	4.0430512678,
+	4.0604430105,
+	4.0775374439,
+	4.0943445622,
+	4.1108738642,
+	4.127134385,
+	4.1431347264,
+	4.1588830834,
+	4.1743872699,
+};
 
 struct HH
 {
 	int time;
-	long long value;
-	void set(int v)
+	double value;
+	void set(int v, double m)
 	{
-/*		int t = v;
+		/*		int t = v;
 		int t2 = v;
 		while (t != 0) {
-			t >>= 2;
-			t2 >>= 1;
+		t >>= 2;
+		t2 >>= 1;
 		}
 		++t2;
 		if (time != history_len + ClearHash) value = v*v*t2;
 		else value += v*v*t2;
-*/
-		if (time != history_len + ClearHash) value = v*v;
-		else value += v*v;
+		*/
+		//		double b = (NCNodes + 1) / (NCMidNodes + 1);
+		//		double s = m;
+		//		for (int i = 0;i < v;++i) s = s*v;
+		double b = (m*v)*v;
+		//if (v == 0) b = m;
+		//else b = m*exp(log_table[v]*(NCNodes + 1) / (NCMidNodes + 1));
+
+		if (time != history_len + ClearHash) value = b;
+		else value += b;
 		time = history_len + ClearHash;
 	}
-	long long get()
+	double get()
 	{
 		if (time != history_len + ClearHash) return 0;
 		return value;
@@ -1686,7 +1764,7 @@ struct HH
 
 
 HH EmptyHH;
-HH HHTable[(NUM_PIECE_SLOTS+1)*(NUM_PIECE_SLOTS+1)*(h1 - a8 + 1) * 2 * (h1 - a8 + 1)];
+HH HHTable[(NUM_PIECE_SLOTS + 1)*(NUM_PIECE_SLOTS + 1)*(h1 - a8 + 1) * 2 * (h1 - a8 + 1)];
 HH &GetHH(bool quiescent, RelativeMove &r)
 {
 	if (r.from == NO_SLOT) return EmptyHH;
@@ -1698,14 +1776,18 @@ HH &GetHH(bool quiescent, RelativeMove &r)
 }
 
 Move EmptyM;
-#define LONGINF ((long long)1<<59)
+double HistoryParam = .2225;
+double HistoryNotBetaParam = 1.0;
+#define LONGINF 1e100
+//((long long)1<<59)
 struct MoveList {
 	struct Entry {
 		int index;
 		int key;
 	};
 	Move moves[MAX_MOVES_PER_PLY*MAX_PLY];
-	long long value[MAX_MOVES_PER_PLY*MAX_PLY];
+	int value[MAX_MOVES_PER_PLY*MAX_PLY];
+	int hist[MAX_MOVES_PER_PLY*MAX_PLY];
 	int base[MAX_PLY];
 	int best_index[MAX_PLY];
 	int second_best_index[MAX_PLY];
@@ -1732,6 +1814,7 @@ struct MoveList {
 	void push(Move m, int v)
 	{
 		value[base[ply]] = v;
+		hist[base[ply]] = 0.0;
 		moves[base[ply]++] = m;
 		assert(base[ply] < MAX_MOVES_PER_PLY*MAX_PLY);
 	}
@@ -1746,20 +1829,21 @@ struct MoveList {
 	{
 		i.sort();
 		while (!i.empty()) {
-			push(i.back(),i.back_value());
+			push(i.back(), i.back_value());
 			i.pop();
 		}
 	}
-	int index() 
+	int index()
 	{
 		return base[ply];
 	}
 	void add_history(bool q)
 	{
-//		if (CurrentPly > 10) return;
+		//		if (CurrentPly > 10) return;
 		for (int i = first();i < base[ply]; ++i) {
 			if (!moves[i].empty()) {
-				value[i] += (GetHH(q, RelativeMove(moves[i])).get()+15)>>4;
+				//value[i] += (GetHH(q, RelativeMove(moves[i])).get() + 15) >> 4;
+				hist[i] += (GetHH(q, RelativeMove(moves[i])).get());//*.225;
 			}
 		}
 		best_index[ply] = second_best_index[ply] = third_best_index[ply] = fourth_best_index[ply] = -1;
@@ -1773,7 +1857,7 @@ struct MoveList {
 			best_index[ply] = first();
 		}
 		else {
-//			marked[best_index[ply]] = true;
+			//			marked[best_index[ply]] = true;
 			++best_index[ply];
 		}
 		if (best_index[ply] == base[ply]) return false;
@@ -1802,18 +1886,18 @@ struct MoveList {
 		}
 		while (!empty() && back().empty()) pop();
 		if (empty()) return false;
-		long long v = -LONGINF;
+		double v = -LONGINF;
 		int index = -1;
 		int second = -1;
 		int third = -1;
 		int fourth = -1;
 		for (int i = first();i < base[ply]; ++i) {
-			if (!moves[i].empty() && value[i] > v) {
+			if (!moves[i].empty() && value[i]+hist[i] > v) {
 				fourth = third;
 				third = second;
 				second = index;
 				index = i;
-				v = value[i];
+				v = value[i]+hist[i];
 			}
 		}
 		best_index[ply] = index;
@@ -1824,9 +1908,9 @@ struct MoveList {
 	}
 	void unmark()
 	{
-//		for (int i = first();i < base[ply]; ++i) {
-//			marked[i] = false;
-//		}
+		//		for (int i = first();i < base[ply]; ++i) {
+		//			marked[i] = false;
+		//		}
 		best_index[ply] = -1;
 	}
 	bool no_best()
@@ -1838,7 +1922,7 @@ struct MoveList {
 		if (best_index[ply] == -1) return EmptyM;
 		return moves[best_index[ply]];
 	}
-	long long & unmarked_value()
+	int & unmarked_value()
 	{
 		return value[best_index[ply]];
 	}
@@ -1914,7 +1998,7 @@ void init_zobrist()
 	for (int i = 0;i < NUM_PIECE_TYPES;++i)
 		for (int c = 0;c < NUM_COLORS;++c) {
 			for (int j = 0;j < BOARD_SIZE;++j)
-				if (is_piece((PieceType)i)) ZobristSource[ZobristIndex((Colors)c,(PieceType)i,(Pos)j)].rand();
+				if (is_piece((PieceType)i)) ZobristSource[ZobristIndex((Colors)c, (PieceType)i, (Pos)j)].rand();
 				else ZobristSource[ZobristIndex((Colors)c, (PieceType)i, (Pos)j)].clear();
 #ifdef GEN_ZOBRIST			
 				Log << "\n uint64_t ZobristSource[NUM_PIECE_TYPES][BOARD_SIZE] = \n{\n" << hex;
@@ -1943,7 +2027,7 @@ bool sort_pv(Move &m)
 	const int first = MovesOrdered.first(), end = MovesOrdered.end();
 	for (int i = first; i < end; ++i)
 		if (MovesOrdered[i].from == m.from && MovesOrdered[i].to == m.to) {
-			MovesOrdered.push(MovesOrdered[i],MovesOrdered.value[i]);
+			MovesOrdered.push(MovesOrdered[i], MovesOrdered.value[i]);
 			MovesOrdered[i].clear();
 			return true;
 		}
@@ -2010,7 +2094,7 @@ struct RepeatListStruct {
 		while (bins[bin].full()) bin = ((bin + 1) & (REPEAT_BINS - 1));
 		bins[bin].add(hash);
 		bin_history[history++] = bin;
-	//	assert(bins[bin_history[history - 1]].back() == Hash);
+		//	assert(bins[bin_history[history - 1]].back() == Hash);
 	}
 	void add(Colors c)
 	{
@@ -2020,7 +2104,7 @@ struct RepeatListStruct {
 
 	void remove()
 	{
-//		assert(bins[bin_history[history - 1]].back() == Hash);
+		//		assert(bins[bin_history[history - 1]].back() == Hash);
 		massert(history > 0);
 		bins[bin_history[--history]].remove();
 	}
@@ -2132,18 +2216,18 @@ int eval_kp(Colors c, Colors o, Pos f)
 	if (PawnsRank[c][f] == 7)
 		r = 0;
 	else if (PawnsRank[c][f] == 6)
-		r = (int)(-13* KP_SCALE);
+		r = (int)(-13 * KP_SCALE);
 	else if (PawnsRank[c][f] != 0)
-		r = (int)(-26*KP_SCALE);
+		r = (int)(-26 * KP_SCALE);
 	else
-		r = (int)(-33*KP_SCALE);
+		r = (int)(-33 * KP_SCALE);
 
 	if (PawnsRank[o][f] == 0)
-		return r - (int)(20*KP_SCALE);
+		return r - (int)(20 * KP_SCALE);
 	else if (PawnsRank[o][f] == 2)
-		return r - (int)(13*KP_SCALE);
+		return r - (int)(13 * KP_SCALE);
 	else if (PawnsRank[o][f] == 3)
-		return r - (int)(7*KP_SCALE);
+		return r - (int)(7 * KP_SCALE);
 	return r;
 }
 
@@ -2183,8 +2267,8 @@ void simple_calc()
 	for (int c = LIGHT;c < NUM_COLORS;++c) {
 		KP_END[c] = MaterialSums[c][MAJOR_MINOR_COUNT] == 0;
 		int base = base_by_color((Colors)c);
-//		if (Players.pieces[BISHOP1 + base] != EMPTY && Players.pieces[BISHOP2 + base] != EMPTY) EvalTemp[c] += 30;
-//		if (Players.pieces[KNIGHT1 + base] != EMPTY && Players.pieces[KNIGHT2 + base] != EMPTY) EvalTemp[c] += 30;
+		//		if (Players.pieces[BISHOP1 + base] != EMPTY && Players.pieces[BISHOP2 + base] != EMPTY) EvalTemp[c] += 30;
+		//		if (Players.pieces[KNIGHT1 + base] != EMPTY && Players.pieces[KNIGHT2 + base] != EMPTY) EvalTemp[c] += 30;
 		{
 			const int cq = count_slot(base + QUEENP);
 			const int cr = count_slot(base + ROOK1) + count_slot(base + ROOK2);
@@ -2224,7 +2308,7 @@ void simple_calc()
 void calc_pawns()
 {
 	EvalDirty = false;
-//	PawnsDirty = true;
+	//	PawnsDirty = true;
 	for (int i = PAWN1;i < NUM_PIECE_SLOTS;++i) Players.pinned[i] = NotPinned;
 	EvalTemp[LIGHT] = EvalTemp[DARK] = 0;
 	if (PawnsDirty) {
@@ -2232,12 +2316,12 @@ void calc_pawns()
 		PawnsTemp[LIGHT] = PawnsTemp[DARK] = 0;
 		for (int c = LIGHT;c < NUM_COLORS;++c) {
 			/*
-					int base = base_by_color((Colors)c);
-					for (int r = PAWN1;r < NUM_UNCOLORED_PIECE_SLOTS;++r) {
-						if (Players.pieces[base + r] != EMPTY) {
-							EvalTemp[c] += SEE(Players.positions[base+r]);
-						}
-					}
+			int base = base_by_color((Colors)c);
+			for (int r = PAWN1;r < NUM_UNCOLORED_PIECE_SLOTS;++r) {
+			if (Players.pieces[base + r] != EMPTY) {
+			EvalTemp[c] += SEE(Players.positions[base+r]);
+			}
+			}
 			*/
 			KP_END[c] = MaterialSums[c][MAJOR_MINOR_COUNT] == 0;
 			LowestPassed[c] = 0;
@@ -2261,10 +2345,10 @@ void calc_pawns()
 		}
 
 		/*	int nonlinear=0;
-	if (count_slot(base + QUEENP) + count_slot(base + ROOK1) + count_slot(base + ROOK2) > 1) {
+		if (count_slot(base + QUEENP) + count_slot(base + ROOK1) + count_slot(base + ROOK2) > 1) {
 		nonlinear = (5 * count_slot(base + QUEENP) + ((count_slot(base + ROOK1) + count_slot(base + ROOK2))<<1))*PAWN_VALUE>>5;
-	}
-*/
+		}
+		*/
 		if (PawnsDirty) {
 			for (int r = PAWN1;r <= PAWN8;++r) {
 				const Pos pp = Players.positions[r + base];
@@ -2275,20 +2359,20 @@ void calc_pawns()
 				}
 			}
 		}
-//		if (Players.pieces[BISHOP1 + base] != EMPTY && Players.pieces[BISHOP2 + base] != EMPTY) EvalTemp[c] += 30;
-//		if (Players.pieces[KNIGHT1 + base] != EMPTY && Players.pieces[KNIGHT2 + base] != EMPTY) EvalTemp[c] += 30;
-//mobility disabled
+		//		if (Players.pieces[BISHOP1 + base] != EMPTY && Players.pieces[BISHOP2 + base] != EMPTY) EvalTemp[c] += 30;
+		//		if (Players.pieces[KNIGHT1 + base] != EMPTY && Players.pieces[KNIGHT2 + base] != EMPTY) EvalTemp[c] += 30;
+		//mobility disabled
 		NumPins[c] = 0;//calc_pins((Colors)c, Players.positions[KINGP + base], Pins[c], Pinners[c]);
-///*		
-		for (int j = NumPins[c]-1;j >=0;--j) {
+					   ///*		
+		for (int j = NumPins[c] - 1;j >= 0;--j) {
 			EvalTemp[c] -= __max(EValuePerPiece[Players.pieces[Pins[c][j]]] - EValuePerPiece[Players.pieces[Pinners[c][j]]], 0) >> 4;
 		}
 		for (int r = KNIGHT1;r <= QUEENP;++r) {
 			if (Players.pinned[r] != NotPinned) EvalTemp[c] += mobility((PieceSlotType)(r + base));
 		}
-//*/
+		//*/
 	}
-	
+
 	if (PawnsDirty) {
 		for (int c = LIGHT;c < NUM_COLORS;++c) {
 			int base = base_by_color((Colors)c);
@@ -2352,7 +2436,7 @@ void calc_pawns()
 		}
 	}
 	for (int kc = LIGHT;kc < NUM_COLORS;++kc) {
-		if (MaterialSums[kc][MAJOR_MINOR_COUNT] <= BISHOP_VALUE+KNIGHT_VALUE && MaterialSums[other_color((Colors)kc)][MAJOR_MINOR_COUNT] <= BISHOP_VALUE) {
+		if (MaterialSums[kc][MAJOR_MINOR_COUNT] <= BISHOP_VALUE + KNIGHT_VALUE && MaterialSums[other_color((Colors)kc)][MAJOR_MINOR_COUNT] <= BISHOP_VALUE) {
 			int king_base = base_by_color((Colors)kc);
 			const Pos kpos = Players.positions[KINGP + king_base];
 			int kp_tropism = 0;
@@ -2372,15 +2456,15 @@ void calc_pawns()
 	///*
 	//mop up should handle knights differently
 	if (MaterialSums[LIGHT][PAWN_COUNT] == 0 && MaterialSums[DARK][PAWN_COUNT] == 0 &&
-		Players.pieces[DARK_KNIGHT1]==EMPTY && Players.pieces[DARK_KNIGHT2] == EMPTY &&
+		Players.pieces[DARK_KNIGHT1] == EMPTY && Players.pieces[DARK_KNIGHT2] == EMPTY &&
 		Players.pieces[LIGHT_KNIGHT1] == EMPTY && Players.pieces[LIGHT_KNIGHT2] == EMPTY) {
 		if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT] != MaterialSums[DARK][MAJOR_MINOR_COUNT]) {
 			if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT] > MaterialSums[DARK][MAJOR_MINOR_COUNT])
 				if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT]<2 * ROOK_VALUE)
-					EvalTemp[LIGHT] += 3*47 * CenterManhattanDistance[Players.positions[DARK_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
-			else
-				if (MaterialSums[DARK][MAJOR_MINOR_COUNT]<2 * ROOK_VALUE)
-					EvalTemp[DARK] += 3* 47 * CenterManhattanDistance[Players.positions[LIGHT_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
+					EvalTemp[LIGHT] += 3 * 47 * CenterManhattanDistance[Players.positions[DARK_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
+				else
+					if (MaterialSums[DARK][MAJOR_MINOR_COUNT]<2 * ROOK_VALUE)
+						EvalTemp[DARK] += 3 * 47 * CenterManhattanDistance[Players.positions[LIGHT_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
 		}
 	}
 	//*/
@@ -2393,8 +2477,8 @@ void calc_pawns()
 
 inline int positive_square_value_of_piece(Colors c, PieceType p, Pos s)
 {
-//	if (!CheckForEndgame) 
-//		return 0;
+	//	if (!CheckForEndgame) 
+	//		return 0;
 	if (!is_piece(p)) return 0;
 	//{}{}{} make more efficient later
 	return (!SideInEndgame(c) ? (c == LIGHT ? SquareTableL : SquareTableD)[p][s] : (c == LIGHT ? EndgameSquareTableL : EndgameSquareTableD)[p][s]);
@@ -2590,24 +2674,24 @@ float PbTable[10][17] = {
 		0,
 	},
 	{//8
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-},};
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+	}, };
 
 inline int pawn_balance(Colors c)
 {
@@ -2634,30 +2718,30 @@ inline int pawn_balance(Colors c)
 		float help = MaterialSums[other_color(c)][MAJOR_MINOR_COUNT] * (.5 / ROOK_VALUE);
 		qv = qv / interference*__min(help, interference);
 	}
-	int nonlinear=0;
+	int nonlinear = 0;
 	if (count_slot(base + QUEENP) + count_slot(base + ROOK1) + count_slot(base + ROOK2) > 1) {
-		nonlinear = (5 * count_slot(base + QUEENP) + ((count_slot(base + ROOK1) + count_slot(base + ROOK2))<<1))*PAWN_VALUE>>5;
+		nonlinear = (5 * count_slot(base + QUEENP) + ((count_slot(base + ROOK1) + count_slot(base + ROOK2)) << 1))*PAWN_VALUE >> 5;
 	}
 	if (count_slot(other_base + QUEENP) + count_slot(other_base + ROOK1) + count_slot(other_base + ROOK2) > 1) {
 		nonlinear -= (5 * count_slot(other_base + QUEENP) + ((count_slot(other_base + ROOK1) + count_slot(other_base + ROOK2)) << 1))*PAWN_VALUE >> 5;
 	}
 	int m = __min(MaterialSums[c][PAWN_COUNT], MaterialSums[other_color(c)][PAWN_COUNT]);
-	return pv*d+(int)qv*PbTable[m][d + 8]+(int)nonlinear;
+	return pv*d + (int)qv*PbTable[m][d + 8] + (int)nonlinear;
 }
 
 inline int eval()
 {
-//	if (CheckForEndgame) 
-//		return simple_eval();
+	//	if (CheckForEndgame) 
+	//		return simple_eval();
 
 	if (EvalDirty) //simple_calc();
-			calc_pawns();
+		calc_pawns();
 	const Colors o = other_color(_PlySide);
 	const int material_count = //pawn_balance(_PlySide) + 
 		MaterialSums[_PlySide][PAWN_COUNT] - MaterialSums[o][PAWN_COUNT] +
-		MaterialSums[_PlySide][DONT_COUNT] + MaterialSums[_PlySide][MAJOR_MINOR_COUNT] - MaterialSums[o][MAJOR_MINOR_COUNT]- MaterialSums[o][DONT_COUNT];
-//	int silly = (Hash.high_mask() & 7);
-//	if (_PlySide == DARK) silly = -silly;
+		MaterialSums[_PlySide][DONT_COUNT] + MaterialSums[_PlySide][MAJOR_MINOR_COUNT] - MaterialSums[o][MAJOR_MINOR_COUNT] - MaterialSums[o][DONT_COUNT];
+	//	int silly = (Hash.high_mask() & 7);
+	//	if (_PlySide == DARK) silly = -silly;
 	return  material_count +
 		PersistantValue + EphemeralValue + PawnsValue;//+silly;
 }
@@ -2681,21 +2765,21 @@ inline int eval(Colors c)
 	return -eval();
 }
 /*enum PieceType : signed char {
-	EMPTY = 0,
-	KING_NOT_MOVED = 1,
-	KING = 2,
-	KING_CASTLED = 3,
-	PAWN = 4,
-	PAWN_JUST_ADVANCED = 5,
-	KNIGHT = 6,
-	BISHOP = 7,
-	ROOK_NOT_MOVED = 8,
-	ROOK = 9,
-	QUEEN = 10,
-	NUM_PIECE_TYPES = 11,
+EMPTY = 0,
+KING_NOT_MOVED = 1,
+KING = 2,
+KING_CASTLED = 3,
+PAWN = 4,
+PAWN_JUST_ADVANCED = 5,
+KNIGHT = 6,
+BISHOP = 7,
+ROOK_NOT_MOVED = 8,
+ROOK = 9,
+QUEEN = 10,
+NUM_PIECE_TYPES = 11,
 };
 */
-const bool IsSufficient[NUM_PIECE_TYPES] = 
+const bool IsSufficient[NUM_PIECE_TYPES] =
 {
 	false,//empty
 	false,false,//king
@@ -2723,12 +2807,12 @@ inline void add_value(Colors side, PieceSlotType s)
 	const Pos p = Players.positions[s];
 	const PieceType t = Players.pieces[s];
 	const Colors slot_side = color(s);
-	
-	SufficientPieces += IsSufficient[t]?1:0;
+
+	SufficientPieces += IsSufficient[t] ? 1 : 0;
 	MinorPieces[slot_side] += IsMinor[t];
-//	if (PieceCountIndex[t] == PAWN_COUNT) ++MaterialSums[slot_side][PAWN_COUNT];
-//	else
-		MaterialSums[slot_side][PieceCountIndex[t]] += CheckForEndgame?  ValuePerPiece[t]: EValuePerPiece[t];
+	//	if (PieceCountIndex[t] == PAWN_COUNT) ++MaterialSums[slot_side][PAWN_COUNT];
+	//	else
+	MaterialSums[slot_side][PieceCountIndex[t]] += CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t];
 
 	PersistantValue += square_value_of_piece(side, slot_side, t, p);
 	update_hash(s);
@@ -2739,11 +2823,11 @@ inline void sub_value(Colors side, PieceSlotType s)
 	const PieceType t = Players.pieces[s];
 	const Colors slot_side = color(s);
 
-	SufficientPieces -= IsSufficient[t]?1:0;
+	SufficientPieces -= IsSufficient[t] ? 1 : 0;
 	MinorPieces[slot_side] -= IsMinor[t];
-//	if (PieceCountIndex[t] == PAWN_COUNT) --MaterialSums[slot_side][PAWN_COUNT];
-//	else	
-		MaterialSums[slot_side][PieceCountIndex[t]] -= CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t];
+	//	if (PieceCountIndex[t] == PAWN_COUNT) --MaterialSums[slot_side][PAWN_COUNT];
+	//	else	
+	MaterialSums[slot_side][PieceCountIndex[t]] -= CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t];
 
 	PersistantValue -= square_value_of_piece(side, slot_side, t, p);
 	update_hash(s);
@@ -2900,16 +2984,16 @@ COPYLINE
 
 void Move::make()
 {
-//	hash = Hash;
+	//	hash = Hash;
 	massert(!empty());
-	massert(slot_taken==NO_SLOT || Players.pieces[slot_taken]!=EMPTY);
+	massert(slot_taken == NO_SLOT || Players.pieces[slot_taken] != EMPTY);
 	//board_consistent();
 	if (empty()) return;
 
 	//	if (taken_at != to) {
 	//		printf("move %s to %s taking at %s\n", PosToStandard[from], PosToStandard[to], PosToStandard[taken_at]);
 	//	}
-///*
+	///*
 	if (MoveNumber + history_len > 1
 		&& Players.pieces[Board[En_passant_history[MoveNumber + history_len - 2]]] == PAWN_JUST_ADVANCED) {
 		update_hash(Board[En_passant_history[MoveNumber + history_len - 2]]);
@@ -2918,62 +3002,62 @@ void Move::make()
 		//		cout << "- "<< MoveNumber + history_len - 2<<" " <<PosToStandard[En_passant_history[MoveNumber + history_len - 2]];
 		//board_consistent();
 	}
-//*/
+	//*/
 	if (became == PAWN_JUST_ADVANCED) {
 		En_passant_history[MoveNumber + history_len] = to;
 		En_passant_colors_history[MoveNumber + history_len] == color(Board[to]);
 
-//		cout << "* "<< MoveNumber + history_len << " " <<PosToStandard[to];
+		//		cout << "* "<< MoveNumber + history_len << " " <<PosToStandard[to];
 	}
 	else En_passant_history[MoveNumber + history_len] = 0;
 
 	const PieceSlotType slot_moving = Board[from];
 	add_bonus(color(slot_moving), bonus);
 	Colors side = PlySide();//color(slot_moving);
-//	if (not_move()) {
-//		sub_value(side,slot_moving);
-//		Players.pieces[Board[from]]= became; //Players.pieces[Board()[from]] = became;
-//		add_value(side,slot_moving);
-//		piece_threats(color(became));
-//		RepeatList.add();
-//		return;
-//	}
-	sub_value(side,slot_moving);
-	sub_value(side,slot_taken);
+							//	if (not_move()) {
+							//		sub_value(side,slot_moving);
+							//		Players.pieces[Board[from]]= became; //Players.pieces[Board()[from]] = became;
+							//		add_value(side,slot_moving);
+							//		piece_threats(color(became));
+							//		RepeatList.add();
+							//		return;
+							//	}
+	sub_value(side, slot_moving);
+	sub_value(side, slot_taken);
 	switch (castling) {
 	case CastleLeft:
 		if (color(slot_moving) == LIGHT) {
-			sub_value(side,LIGHT_ROOK1);
+			sub_value(side, LIGHT_ROOK1);
 			Players.pieces[LIGHT_ROOK1] = ROOK;
 			set_position(d1, LIGHT_ROOK1);
-			Board[a1]=NO_SLOT;
-			add_value(side,LIGHT_ROOK1);
+			Board[a1] = NO_SLOT;
+			add_value(side, LIGHT_ROOK1);
 			//board_consistent();
 		}
 		else {
-			sub_value(side,DARK_ROOK1);
+			sub_value(side, DARK_ROOK1);
 			Players.pieces[DARK_ROOK1] = ROOK;
 			set_position(d8, DARK_ROOK1);
 			Board[a8] = NO_SLOT;
-			add_value(side,DARK_ROOK1);
+			add_value(side, DARK_ROOK1);
 			//board_consistent();
 		}
 		break;
 	case CastleRight:
 		if (color(slot_moving) == LIGHT) {
-			sub_value(side,LIGHT_ROOK2);
+			sub_value(side, LIGHT_ROOK2);
 			Players.pieces[LIGHT_ROOK2] = ROOK;
 			set_position(f1, LIGHT_ROOK2);
 			Board[h1] = NO_SLOT;
-			add_value(side,LIGHT_ROOK2);
+			add_value(side, LIGHT_ROOK2);
 			//board_consistent();
 		}
 		else {
-			sub_value(side,DARK_ROOK2);
+			sub_value(side, DARK_ROOK2);
 			Players.pieces[DARK_ROOK2] = ROOK;
 			set_position(f8, DARK_ROOK2);
 			Board[h8] = NO_SLOT;
-			add_value(side,DARK_ROOK2);
+			add_value(side, DARK_ROOK2);
 			//board_consistent();
 		}
 		break;
@@ -2986,13 +3070,13 @@ void Move::make()
 	}
 	Players.pieces[slot_taken] = EMPTY;
 	Players.positions[slot_taken] = 0;
-										   //Board()[to] = slot_moving;
+	//Board()[to] = slot_moving;
 	Board[from] = NO_SLOT;
-	add_value(side,slot_moving);
-//	piece_threats();
-//	board_consistent();
+	add_value(side, slot_moving);
+	//	piece_threats();
+	//	board_consistent();
 	if (is_pawn(initial) || is_king(initial) || is_pawn(piece_taken)) PawnsDirty = true;
-		EvalDirty = true;
+	EvalDirty = true;
 
 	RepeatList.add(color(slot_moving));
 	//board_consistent();
@@ -3008,20 +3092,20 @@ void Move::unmake()
 	Colors side = PlySide();//color(slot_moving);
 	add_bonus(color(slot_moving), -bonus);
 
-						  //	if (not_move()) {
-//		sub_value(side,slot_moving);
-//		Players.pieces[slot_moving] = initial;
-//		add_value(side, slot_moving);
-//		RepeatList.remove();
-//		return;
-//	}
+	//	if (not_move()) {
+	//		sub_value(side,slot_moving);
+	//		Players.pieces[slot_moving] = initial;
+	//		add_value(side, slot_moving);
+	//		RepeatList.remove();
+	//		return;
+	//	}
 	sub_value(side, slot_moving);
 	Board[to] = NO_SLOT;
 	Players.pieces[slot_taken] = piece_taken;
 	set_position(taken_at, slot_taken);
 	set_position(from, slot_moving);
 	Players.pieces[slot_moving] = initial;
-											  //Players.positions[slot_moving] = from;
+	//Players.positions[slot_moving] = from;
 	add_value(side, slot_moving);
 	add_value(side, slot_taken);
 	switch (castling) {
@@ -3062,7 +3146,7 @@ void Move::unmake()
 		}
 		break;
 	}
-///*
+	///*
 	if (MoveNumber + history_len > 1
 		&& Players.pieces[Board[En_passant_history[MoveNumber + history_len - 2]]] == PAWN
 		&& En_passant_colors_history[MoveNumber + history_len - 2] == color(Board[En_passant_history[MoveNumber + history_len - 2]])) {
@@ -3071,10 +3155,10 @@ void Move::unmake()
 		update_hash(Board[En_passant_history[MoveNumber + history_len - 2]]);
 		//		cout << "+ " << MoveNumber + history_len - 2 << " " << PosToStandard[En_passant_history[MoveNumber + history_len - 2]];
 	}
-//*/
+	//*/
 	//	assert(hash == Hash);
 	if (is_pawn(initial) || is_king(initial) || is_pawn(piece_taken)) PawnsDirty = true;
-		EvalDirty = true;
+	EvalDirty = true;
 	//board_consistent();
 }
 
@@ -3157,8 +3241,8 @@ long long FailHighTotal;
 
 void init_board()
 {
-	FailHighCount=0;
-	FailHighTotal=0;
+	FailHighCount = 0;
+	FailHighTotal = 0;
 
 	for (int i = 0;i < MAX_PLY;++i) {
 		for (int j = 0;j < 4; ++j) {
@@ -3170,7 +3254,7 @@ void init_board()
 	}
 	MinorPieces[LIGHT] = MinorPieces[DARK] = 2;
 	SufficientPieces = 8 * 2 + 2 + 4;
-	for (int c=0;c<NUM_COLORS;++c) for (int i=0;i<NUM_MATERIAL_INDEXES;++i) MaterialSums[c][i]=0;
+	for (int c = 0;c<NUM_COLORS;++c) for (int i = 0;i<NUM_MATERIAL_INDEXES;++i) MaterialSums[c][i] = 0;
 	PawnsValue = 0;
 	PawnsDirty = true;
 	EvalDirty = true;
@@ -3188,7 +3272,7 @@ void init_board()
 	MovesIID.clear();
 
 	set_first_guess(0);
-	ClearHash += MAX_MOVES;
+	ClearHash += MAX_MOVES * 2;
 	RepeatList.clear();
 	FakeLen = 0;
 	EndGamePoint = -1;
@@ -3282,7 +3366,7 @@ bool parse_move(Move &m, char *s)
 	Pos to = s[2] - 'a' + 1 + 10 * (10 - (s[3] - '0'));
 	PieceType became = EMPTY;
 	int became_char = 4;
-	if (s[4] == '=' ) ++became_char;
+	if (s[4] == '=') ++became_char;
 	switch (s[became_char]) {
 	case 'N':
 	case 'n':
@@ -3308,34 +3392,34 @@ bool parse_move(Move &m, char *s)
 	}
 	/*
 	Move move((Pos)(s[0] - 'a' + 1 + 10 * (10 - (s[1] - '0'))),
-		(Pos)(s[2] - 'a' + 1 + 10 * (10 - (s[3] - '0'))), Move::CheckForEnpassant ATLINE);
+	(Pos)(s[2] - 'a' + 1 + 10 * (10 - (s[3] - '0'))), Move::CheckForEnpassant ATLINE);
 	switch (s[4]) {
 	case 'N':
 	case 'n':
-		move.became = KNIGHT;
-		break;
+	move.became = KNIGHT;
+	break;
 	case 'B':
 	case 'b':
-		move.became = BISHOP;
-		break;
+	move.became = BISHOP;
+	break;
 	case 'R':
 	case 'r':
-		move.became = ROOK;
-		break;
+	move.became = ROOK;
+	break;
 	case 'Q':
 	case 'q':
-		move.became = QUEEN;
-		break;
+	move.became = QUEEN;
+	break;
 	default:
-		if (move.became == PAWN) {
-			if (move.to <= h8) move.became = QUEEN;
-		}
-		else if (move.became == PAWN) {
-			if (move.to >= a1) move.became = QUEEN;
-		}
+	if (move.became == PAWN) {
+	if (move.to <= h8) move.became = QUEEN;
 	}
-*/
-//	set_side(other_color(PlySide()));
+	else if (move.became == PAWN) {
+	if (move.to >= a1) move.became = QUEEN;
+	}
+	}
+	*/
+	//	set_side(other_color(PlySide()));
 	GenMoves(PlySide(), 0, 1);
 	m.clear();
 
@@ -3432,7 +3516,7 @@ void log_board()
 		Log << "\n" << 8 - row / 10 << " ";
 		for (int col = a8; col <= h8; ++col) {
 			if (Board[row + col] == NO_SLOT) Log << " . ";
-			else Log << ' ' << piece_char(color(Board[row + col]),Players.pieces[Board[row + col]]) << piece_char2( Players.pieces[Board[row + col]]);
+			else Log << ' ' << piece_char(color(Board[row + col]), Players.pieces[Board[row + col]]) << piece_char2(Players.pieces[Board[row + col]]);
 		}
 	}
 	Log << "\n   a  b  c  d  e  f  g  h\n*/\n";
@@ -3462,7 +3546,7 @@ void print_board()
 		printf("\n%d ", 8 - row / 10);
 		for (int col = a8; col <= h8; ++col) {
 			if (Board[row + col] == NO_SLOT) printf(" .");
-			else printf(" %c%c", piece_char(color(Board[row+col]),Players.pieces[Board[row + col]]), piece_char2(Players.pieces[Board[row + col]]));
+			else printf(" %c%c", piece_char(color(Board[row + col]), Players.pieces[Board[row + col]]), piece_char2(Players.pieces[Board[row + col]]));
 		}
 	}
 	printf("\n\n   a  b  c  d  e  f  g  h\n\n");
@@ -3502,7 +3586,7 @@ do { \
 } while (true)
 
 
-#define HASH_LEN_LN2 24
+#define HASH_LEN_LN2 25
 
 const int HASH_LEN = 1 << HASH_LEN_LN2;
 const int HASH_MASK = HASH_LEN - 1;
@@ -3517,7 +3601,7 @@ struct HashMove
 	HashMove(const RelativeMove &m) :from(m.from_pos), to(m.to), became(m.promotion) {}
 	void operator = (const RelativeMove &m) {
 		from = m.from_pos;
-		to = m.to; 
+		to = m.to;
 		became = m.promotion;
 	}
 	void operator = (const Move &m) {
@@ -3592,7 +3676,7 @@ public:
 		eval_copy = INF;
 		upper_exact = lower_exact = false;
 	}
-	bool is_exact() { return upper_exact || lower_exact;  }
+	bool is_exact() { return upper_exact || lower_exact; }
 
 	int get_eval(bool simple)
 	{
@@ -3606,12 +3690,12 @@ public:
 		if (upper_bound_depth != -127 && abs(upper_bound - lower_bound) < PAWN_VALUE >> 1) return  lower_bound;
 		if (eval_copy != INF) return eval_copy;
 		if (simple) return simple_eval();
-//		if (lower_bound_depth != -127) return lower_bound;
+		//		if (lower_bound_depth != -127) return lower_bound;
 		//		if (upper_bound_depth == lower_bound_depth) return upper_bound;
-//		if (lower_bound_depth != -127) return lower_bound;//(upper_bound + lower_bound) >> 1;
+		//		if (lower_bound_depth != -127) return lower_bound;//(upper_bound + lower_bound) >> 1;
 
-//		if (eval_copy == INF) 
-			eval_copy = eval();
+		//		if (eval_copy == INF) 
+		eval_copy = eval();
 		return eval_copy;
 	}
 	HashTableEntry() : move_created(0) { }
@@ -3633,19 +3717,19 @@ public:
 HashTableEntry *HashTable;//[HASH_LEN];
 void init_hash()
 {
-	HashTable = new HashTableEntry[HASH_LEN<<1];
+	HashTable = new HashTableEntry[HASH_LEN];
 	if (HashTable == nullptr) cout << "\nAllocation failed\n";
 }
 
 HashTableEntry * GetHash(bool q)
 {
-	const int hoff = q ? HASH_LEN : 0;
-	HashTableEntry * entry = &HashTable[hoff+((int)(Hash.low) & HASH_MASK)], *entry2;
-	if (//entry->move_created == history_len + ClearHash && 
+//	const int hoff = q ? HASH_LEN : 0;
+	HashTableEntry * entry = &HashTable[((int)(Hash.low) & HASH_MASK)], *entry2;
+	if ((history_len + ClearHash) - entry->move_created < MAX_MOVES  &&
 		entry->key == Hash) return entry;
 
-	entry2 = &HashTable[hoff + ((int)Hash.high_mask() & HASH_MASK)];
-	if (//entry->move_created == history_len + ClearHash && 
+	entry2 = &HashTable[((int)Hash.high_mask() & HASH_MASK)];
+	if ((history_len + ClearHash) - entry->move_created < MAX_MOVES &&
 		entry2->key == Hash) return entry2;
 
 	return nullptr;
@@ -3654,7 +3738,7 @@ HashTableEntry * GetHash(bool q)
 int get_order_eval(bool &is_score, Colors c, int depth)
 {
 	HashTableEntry *e = nullptr;
-	if (depth>=0) e=GetHash(false);
+	if (depth >= 0) e = GetHash(false);
 	if (e != nullptr) {
 		if (e->lower_bound_depth != -127 && e->upper_bound_depth != -127) {
 			is_score = true;
@@ -3662,7 +3746,7 @@ int get_order_eval(bool &is_score, Colors c, int depth)
 		}
 	}
 	HashTableEntry *eq = nullptr;
-	if (depth<=1) eq = GetHash(true);
+	if (depth <= 1) eq = GetHash(true);
 	if (eq != nullptr) {
 		if (eq->lower_bound_depth != -127 && eq->upper_bound_depth != -127) {
 			is_score = true;
@@ -3675,22 +3759,25 @@ int get_order_eval(bool &is_score, Colors c, int depth)
 
 HashTableEntry * GetOrMakeHash(bool q)
 {
-	const int hoff = q ? HASH_LEN : 0;
-	HashTableEntry * entry = &HashTable[hoff + ((int)(Hash.low) & HASH_MASK)], *entry2;
-	if (//entry->move_created == history_len + ClearHash && 
+	//const int hoff = q ? HASH_LEN : 0;
+	HashTableEntry * entry = &HashTable[((int)(Hash.low) & HASH_MASK)], *entry2;
+	if ((history_len + ClearHash) - entry->move_created < MAX_MOVES &&
 		entry->key == Hash) {
 		entry->move_created = history_len + ClearHash;
 		return entry;
 	}
-	entry2 = &HashTable[hoff + ((int)Hash.high_mask() & HASH_MASK)];
-	if (//entry->move_created == history_len + ClearHash && 
+	entry2 = &HashTable[((int)Hash.high_mask() & HASH_MASK)];
+	if ((history_len + ClearHash) - entry->move_created < MAX_MOVES &&
 		entry2->key == Hash) {
 		entry2->move_created = history_len + ClearHash;
 		return entry2;
 	}
-	if (entry->move_created > entry2->move_created) entry = entry2;
-	else if (!entry2->is_exact() && entry->is_exact()) entry = entry2;
-	else if (entry2->is_exact() == entry->is_exact() && entry2->get_move_depth() < entry->get_move_depth()) entry = entry2;
+	if ((history_len + ClearHash) - entry->move_created < MAX_MOVES) {
+		if ((history_len + ClearHash) - entry->move_created >= MAX_MOVES) entry = entry2;
+		else if (entry->move_created > entry2->move_created) entry = entry2;
+		else if (!entry2->is_exact() && entry->is_exact()) entry = entry2;
+		else if (entry2->is_exact() == entry->is_exact() && entry2->get_move_depth() < entry->get_move_depth()) entry = entry2;
+	}
 	entry->key = Hash;
 	entry->clear();
 	entry->move_created = history_len + ClearHash;
@@ -3703,16 +3790,16 @@ bool dec_ply();
 
 int QUIESCENT_DEPTH;
 
-bool order_value(int &result, Colors c,Move &m, int depth)
+bool order_value(int &result, Colors c, Move &m, int depth)
 {
-//	result = 0;
-//	return false;
+	//	result = 0;
+	//	return false;
 	m.make();
 	//int get_order_eval(bool &is_score, Colors c)
-//	set_PlySide(other_color(PlySide()));
+	//	set_PlySide(other_color(PlySide()));
 	bool found = false;
 	if (depth < 4 - QUIESCENT_DEPTH) result = 0;
-	else result = get_order_eval(found, c, depth)<<9;
+	else result = get_order_eval(found, c, depth) << 9;
 	m.unmake();
 	return found;
 }
@@ -3735,25 +3822,25 @@ int SEE(Colors c, Pos root_pos, PieceSlotType exclude, int depth);
 // square_value - positive_square_value_of_piece(c, piece_type, expanding) ));
 /*
 #define CAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
-		Move m MOVE_PARAMS;\
-		int v; \
-		const bool found = order_value(v,c,m, depth);\
-		GENERATE_TO.push(m,found?v:(v+(val<<10)+(MVV_LVA)));\
-	} 
+Move m MOVE_PARAMS;\
+int v; \
+const bool found = order_value(v,c,m, depth);\
+GENERATE_TO.push(m,found?v:(v+(val<<10)+(MVV_LVA)));\
+}
 
 #define NONCAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
-		Move m MOVE_PARAMS;\
-		int v; \
-		const bool found = order_value(v,c,m, depth);\
-		GENERATE_TO.push(m,found?v:(v+(val<<10)+(MVV_LVA)));\
-	} 
+Move m MOVE_PARAMS;\
+int v; \
+const bool found = order_value(v,c,m, depth);\
+GENERATE_TO.push(m,found?v:(v+(val<<10)+(MVV_LVA)));\
+}
 //*/
 ///*
 #define CAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
 		Move m MOVE_PARAMS;\
 		GENERATE_TO.push(m,(val<<9)+(MVV_LVA));\
 	} 
-	//*/
+//*/
 #define NONCAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
 		Move m MOVE_PARAMS;\
 		GENERATE_TO.push(m,(val<<9)+(MVV_LVA));\
@@ -3942,8 +4029,8 @@ void generate_pawn_moves(const Colors c, const Pos root_pos, PieceSlotType attac
 		else {
 			if (root_pos >= a2) PPOINT_DOUBLE(-20);
 			PPOINT(-10);
-			PAWNQPOINT(-9,1);
-			PAWNQPOINT(-11,-1);
+			PAWNQPOINT(-9, 1);
+			PAWNQPOINT(-11, -1);
 		}
 	}
 	else {
@@ -3955,8 +4042,8 @@ void generate_pawn_moves(const Colors c, const Pos root_pos, PieceSlotType attac
 		else {
 			if (root_pos <= h7) PPOINT_DOUBLE(20);
 			PPOINT(10);
-			PAWNQPOINT(9,-1);
-			PAWNQPOINT(11,1);
+			PAWNQPOINT(9, -1);
+			PAWNQPOINT(11, 1);
 		}
 	}
 }
@@ -4014,14 +4101,14 @@ void generate_king_moves(const Colors c, const Pos root_pos, PieceSlotType attac
 Move test_king_castle_moves(const Colors c, const Pos root_pos, const Pos target, const PieceType promotion)
 {
 	if (can_castle_left(c)) {
-		if (c == LIGHT) { if (target==c1)  return Move(e1, c1, Move::CastleLeft ATLINE); }
+		if (c == LIGHT) { if (target == c1)  return Move(e1, c1, Move::CastleLeft ATLINE); }
 		else { if (target == c8)  return Move(e8, c8, Move::CastleLeft ATLINE); }
 	}
 	if (can_castle_right(c)) {
 		if (c == LIGHT) { if (target == g1) return Move(e1, g1, Move::CastleRight ATLINE); }
 		else { if (target == g8) return Move(e8, g8, Move::CastleRight ATLINE); }
 	}
-	return test_king_moves(c,root_pos,target, promotion);
+	return test_king_moves(c, root_pos, target, promotion);
 }
 
 int Castles = 0;
@@ -4029,13 +4116,13 @@ int Castles = 0;
 void generate_king_castle_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	if (can_castle_left(c)) {
-		if (c == LIGHT) GENERATE_TO.push(Move(e1, c1, Move::CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS,0));
-		else GENERATE_TO.push(Move(e8, c8, Move::CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS,0));
+		if (c == LIGHT) GENERATE_TO.push(Move(e1, c1, Move::CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
+		else GENERATE_TO.push(Move(e8, c8, Move::CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
 		++Castles;
 	}
 	if (can_castle_right(c)) {
-		if (c == LIGHT) GENERATE_TO.push(Move(e1, g1, Move::CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS,0));
-		else GENERATE_TO.push(Move(e8, g8, Move::CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS,0));
+		if (c == LIGHT) GENERATE_TO.push(Move(e1, g1, Move::CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
+		else GENERATE_TO.push(Move(e8, g8, Move::CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
 		++Castles;
 	}
 	generate_king_moves(c, root_pos, attacker, val, depth);
@@ -4218,8 +4305,8 @@ void quiesent_generate_pawn_moves(const Colors c, const Pos root_pos, PieceSlotT
 			QPOINT_PROMOTE(-11);
 		}
 		else {
-			PAWNQPOINT(-9,1);
-			PAWNQPOINT(-11,-1);
+			PAWNQPOINT(-9, 1);
+			PAWNQPOINT(-11, -1);
 		}
 	}
 	else {
@@ -4229,8 +4316,8 @@ void quiesent_generate_pawn_moves(const Colors c, const Pos root_pos, PieceSlotT
 			QPOINT_PROMOTE(11);
 		}
 		else {
-			PAWNQPOINT(9,-1);
-			PAWNQPOINT(11,1);
+			PAWNQPOINT(9, -1);
+			PAWNQPOINT(11, 1);
 		}
 	}
 }
@@ -4302,22 +4389,22 @@ typedef void GenMoveFn(const Colors, const Pos, PieceSlotType attacker, int val,
 typedef Move TestMoveFn(const Colors c, const Pos root_pos, const Pos target, const PieceType promotion);
 
 /*enum PieceType : signed char {
-	EMPTY = 0,
-	KING_NOT_MOVED = 1,
-	KING = 2,
-	KING_CASTLED = 3,
-	PAWN = 4,
-	PAWN_JUST_ADVANCED = 5,
-	KNIGHT = 6,
-	BISHOP = 7,
-	ROOK_NOT_MOVED = 8,
-	ROOK = 9,
-	QUEEN = 10,
-	NUM_PIECE_TYPES = 11,
+EMPTY = 0,
+KING_NOT_MOVED = 1,
+KING = 2,
+KING_CASTLED = 3,
+PAWN = 4,
+PAWN_JUST_ADVANCED = 5,
+KNIGHT = 6,
+BISHOP = 7,
+ROOK_NOT_MOVED = 8,
+ROOK = 9,
+QUEEN = 10,
+NUM_PIECE_TYPES = 11,
 };*/
 
 void generate_empty_moves(const Colors, const Pos, PieceSlotType attacker, int val, int depth) {}
-Move test_empty_moves(const Colors, const Pos, const Pos, const PieceType) { return Move();  }
+Move test_empty_moves(const Colors, const Pos, const Pos, const PieceType) { return Move(); }
 
 TestMoveFn* TestMoveTable[NUM_PIECE_TYPES] =
 {
@@ -4408,27 +4495,27 @@ Move TestMove(Colors c, PieceSlotType p, Pos target, PieceType promotion)
 
 void GenMove(PieceSlotType p, int val, int depth)
 {
-//	if (Players.pieces[p] == EMPTY) return;
-	GenMoveTable[Players.pieces[p]](color(p), Players.positions[p],p, val, depth);
+	//	if (Players.pieces[p] == EMPTY) return;
+	GenMoveTable[Players.pieces[p]](color(p), Players.positions[p], p, val, depth);
 }
 
 void QGenMove(PieceSlotType p, int val, int depth)
 {
-//	if (Players.pieces[p] == EMPTY) return;
-	QGenMoveTable[Players.pieces[p]](color(p), Players.positions[p],p, val, depth);
+	//	if (Players.pieces[p] == EMPTY) return;
+	QGenMoveTable[Players.pieces[p]](color(p), Players.positions[p], p, val, depth);
 }
 
 void GenMoves(PieceSlotType p, int val, int depth)
 {
-	GenMove(p,val,depth);
-//	MovesOrdered.push_list(VanillaMoves);
-//	MovesOrdered.push_list(Captures);
+	GenMove(p, val, depth);
+	//	MovesOrdered.push_list(VanillaMoves);
+	//	MovesOrdered.push_list(Captures);
 }
 
 int GenPinMoves(Colors c, int &num_pin_move, Pos *prev_pin_moves, int val, int depth)
 {
 	const int start_index = MovesOrdered.index();
-	GenMoves((PieceSlotType)(KINGP + base_by_color(c)),val,depth);
+	GenMoves((PieceSlotType)(KINGP + base_by_color(c)), val, depth);
 	const int end_index = MovesOrdered.index();
 	for (int i = start_index;i < end_index;++i) {
 		for (int j = 0;j < num_pin_move;++j) {
@@ -4446,41 +4533,41 @@ int GenPinMoves(Colors c, int &num_pin_move, Pos *prev_pin_moves, int val, int d
 }
 void QGenMoves(PieceSlotType p, int val, int depth)
 {
-	QGenMove(p,val, depth);
-//	MovesOrdered.push_list(VanillaMoves);
-//	MovesOrdered.push_list(Captures);
+	QGenMove(p, val, depth);
+	//	MovesOrdered.push_list(VanillaMoves);
+	//	MovesOrdered.push_list(Captures);
 }
 /*
 bool LazyGenMove(int &i, bool quiescent, Colors c, Move *killer_moves, int num_killer)
 {
-	do {
-		if (i == NUM_UNCOLORED_PIECE_SLOTS) return false;
-		if (quiescent) QGenMove((PieceSlotType)(i + base_by_color(c)));
-		else GenMove((PieceSlotType)(i + base_by_color(c)));
+do {
+if (i == NUM_UNCOLORED_PIECE_SLOTS) return false;
+if (quiescent) QGenMove((PieceSlotType)(i + base_by_color(c)));
+else GenMove((PieceSlotType)(i + base_by_color(c)));
 //		MovesOrdered.push_list(VanillaMoves);
 //		MovesOrdered.push_list(Captures);
-		++i;
-	} while (MovesOrdered.empty());
-	for (int i = 0;i < num_killer;++i) {
-		if (sort_pv(killer_moves[i])) MovesOrdered.pop();
-	}
-	return true;
+++i;
+} while (MovesOrdered.empty());
+for (int i = 0;i < num_killer;++i) {
+if (sort_pv(killer_moves[i])) MovesOrdered.pop();
+}
+return true;
 }
 */
 void GenMoves(Colors c, int val, int depth)
 {
 	PieceSlotType base = base_by_color(c);
-	for (int i = PAWN1;i < NUM_UNCOLORED_PIECE_SLOTS;++i) GenMove((PieceSlotType)(i + base), val,depth);
-//	MovesOrdered.push_list(VanillaMoves);
-//	MovesOrdered.push_list(Captures);
+	for (int i = PAWN1;i < NUM_UNCOLORED_PIECE_SLOTS;++i) GenMove((PieceSlotType)(i + base), val, depth);
+	//	MovesOrdered.push_list(VanillaMoves);
+	//	MovesOrdered.push_list(Captures);
 }
 
 void QGenMoves(Colors c, int val, int depth)
 {
 	PieceSlotType base = base_by_color(c);
-	for (int i = PAWN1;i < NUM_UNCOLORED_PIECE_SLOTS;++i) QGenMove((PieceSlotType)(i + base), val,depth);
-//	MovesOrdered.push_list(VanillaMoves);
-//	MovesOrdered.push_list(Captures);
+	for (int i = PAWN1;i < NUM_UNCOLORED_PIECE_SLOTS;++i) QGenMove((PieceSlotType)(i + base), val, depth);
+	//	MovesOrdered.push_list(VanillaMoves);
+	//	MovesOrdered.push_list(Captures);
 }
 
 
@@ -4788,7 +4875,7 @@ int see_u(Colors side, Pos root_pos, int just_captured, int depth)
 	PieceSlotType least = LeastAttacker(side, root_pos);
 	if (least == NO_SLOT) return 0;
 	Board[Players.positions[least]] = NO_SLOT;
-	int v = just_captured - see_u(other_color(side), root_pos, ValuePerPiece[Players.pieces[least]],depth-1);
+	int v = just_captured - see_u(other_color(side), root_pos, ValuePerPiece[Players.pieces[least]], depth - 1);
 	Board[Players.positions[least]] = least;
 	if (v < 0) return 0;
 	return v;
@@ -4878,7 +4965,7 @@ bool GenThreat(int &i, Colors c, Pos root_pos, int val, int depth)
 	switch (i)
 	{
 	case 0:
-		if (c == LIGHT) { REV_GEN_POS(-9, PAWN);}
+		if (c == LIGHT) { REV_GEN_POS(-9, PAWN); }
 		else { REV_GEN_POS(9, PAWN); }
 		i = 1;
 		if (!MovesOrdered.empty()) return true;
@@ -4998,39 +5085,39 @@ bool king_in_check(Colors c)
 // fail-soft alpha-beta search
 int alphabeta(int depth, int alpha, int beta)
 {
-	move bestmove;
-	int current = -WIN;
-	if (game over or depth <= 0) return winning score or eval();
-	for (each possible move m) {
-		make move m;
-		score = -alphabeta(depth - 1, -beta, -alpha)
-		unmake move m;
-		if (score >= current) {
-			current = score;
-			bestmove = m;
-			if (score >= alpha) alpha = score;
-			if (score >= beta) break;
-		}
-	}
-	return current;
+move bestmove;
+int current = -WIN;
+if (game over or depth <= 0) return winning score or eval();
+for (each possible move m) {
+make move m;
+score = -alphabeta(depth - 1, -beta, -alpha)
+unmake move m;
+if (score >= current) {
+current = score;
+bestmove = m;
+if (score >= alpha) alpha = score;
+if (score >= beta) break;
+}
+}
+return current;
 }
 
 int test_search(int depth, int beta)
 {
-	move bestmove;
-	int current = -WIN;
-	if (game over or depth <= 0) return winning score or eval();
-	for (each possible move m) {
-		make move m;
-		score = -test_search(depth - 1, -beta+1)
-		unmake move m;
-		if (score >= current) {
-			current = score;
-			bestmove = m;
-			if (score >= beta) break;
-		}
-	}
-	return current;
+move bestmove;
+int current = -WIN;
+if (game over or depth <= 0) return winning score or eval();
+for (each possible move m) {
+make move m;
+score = -test_search(depth - 1, -beta+1)
+unmake move m;
+if (score >= current) {
+current = score;
+bestmove = m;
+if (score >= beta) break;
+}
+}
+return current;
 }
 
 
@@ -5048,9 +5135,9 @@ that the true score could be lower.
 
 int test = 0;
 for (;;) {
-	score = test_search(depth, test+1);
-	if (test == score) break;
-	test = score;
+score = test_search(depth, test+1);
+if (test == score) break;
+test = score;
 }
 RECORD TransTableEntry IS
 Tag : INTEGER;
@@ -5076,207 +5163,207 @@ cache line, old entries are evicted first, as described later.
 #define NUM_KILLERS 7
 
 RelativeMove KillerTemp[HALF_KILLERS];
-	void clear_killer()
-	{
-		for (int i = 0;i < MAX_PLY;++i) {
-			for (int j = 0;j < 4; ++j) BestMovePerPly[j][i].clear();
-			BestMovePerPlyIndex[i] = 0;
+void clear_killer()
+{
+	for (int i = 0;i < MAX_PLY;++i) {
+		for (int j = 0;j < 4; ++j) BestMovePerPly[j][i].clear();
+		BestMovePerPlyIndex[i] = 0;
+	}
+}
+
+
+
+
+
+void add_killer(Move &c)
+{
+	RelativeMove m(c);
+	assert(m.from <= NO_SLOT);
+	int b = BestMovePerPlyIndex[CurrentPly];
+	if (BestMovePerPly[(b - 1) & (HALF_KILLERS - 1)][CurrentPly] == m) return;
+	for (int i = 1;i < HALF_KILLERS;++i) {
+		if (BestMovePerPly[(b - 1 - i) & (HALF_KILLERS - 1)][CurrentPly] == m) {
+			KillerTemp[0] = m;
+			int k = 1;
+			for (int j = 0;j < HALF_KILLERS;++j) {
+				if (j != i) KillerTemp[k++] = BestMovePerPly[(b - 1 - j) & (HALF_KILLERS - 1)][CurrentPly];
+			}
+			for (int j = 0;j < HALF_KILLERS;++j) {
+				BestMovePerPly[(b - 1 - j) & (HALF_KILLERS - 1)][CurrentPly] = KillerTemp[j];
+			}
+			return;
 		}
 	}
+	BestMovePerPly[BestMovePerPlyIndex[CurrentPly]][CurrentPly] = m;
+	BestMovePerPlyIndex[CurrentPly] = (1 + BestMovePerPlyIndex[CurrentPly]) & (HALF_KILLERS - 1);
+}
 
-
-
-
-
-	void add_killer(Move &c)
+bool get_killers(RelativeMove **dest, int &i)
+{
+	int b = BestMovePerPlyIndex[CurrentPly];
+	int bn = BestMovePerPlyIndex[CurrentPly - 2];
+	switch (i)
 	{
-		RelativeMove m(c);
+	case 0:
+	{
+		RelativeMove &m = BestMovePerPly[(b - 1)&(HALF_KILLERS - 1)][CurrentPly];
 		assert(m.from <= NO_SLOT);
-		int b = BestMovePerPlyIndex[CurrentPly];
-		if (BestMovePerPly[(b - 1) & (HALF_KILLERS - 1)][CurrentPly] == m) return;
-		for (int i = 1;i < HALF_KILLERS;++i) {
-			if (BestMovePerPly[(b - 1 - i) & (HALF_KILLERS - 1)][CurrentPly] == m) {
-				KillerTemp[0] = m;
-				int k = 1;
-				for (int j = 0;j < HALF_KILLERS;++j) {
-					if (j != i) KillerTemp[k++] = BestMovePerPly[(b - 1 - j) & (HALF_KILLERS - 1)][CurrentPly];
-				}
-				for (int j = 0;j < HALF_KILLERS;++j) {
-					BestMovePerPly[(b - 1 - j) & (HALF_KILLERS - 1)][CurrentPly] = KillerTemp[j];
-				}
-				return;
-			}
+		++i;
+		if (!m.empty()) {
+			*dest = &m;
+			return true;
 		}
-		BestMovePerPly[BestMovePerPlyIndex[CurrentPly]][CurrentPly] = m;
-		BestMovePerPlyIndex[CurrentPly] = (1 + BestMovePerPlyIndex[CurrentPly]) & (HALF_KILLERS - 1);
 	}
-
-	bool get_killers(RelativeMove **dest, int &i)
+	case 1:
 	{
-		int b = BestMovePerPlyIndex[CurrentPly];
-		int bn = BestMovePerPlyIndex[CurrentPly - 2];
-		switch (i)
-		{
-		case 0:
-		{
-			RelativeMove &m = BestMovePerPly[(b - 1)&(HALF_KILLERS - 1)][CurrentPly];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
+		RelativeMove &m = BestMovePerPly[(b - 2)&(HALF_KILLERS - 1)][CurrentPly];
+		assert(m.from <= NO_SLOT);
+		++i;
+		if (!m.empty()) {
+			*dest = &m;
+			return true;
 		}
-		case 1:
-		{
-			RelativeMove &m = BestMovePerPly[(b - 2)&(HALF_KILLERS - 1)][CurrentPly];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 2:
-		{
-			RelativeMove &m = BestMovePerPly[(b - 3)&(HALF_KILLERS - 1)][CurrentPly];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 3:
-		{
-			RelativeMove &m = BestMovePerPly[(bn - 1)&(HALF_KILLERS - 1)][CurrentPly - 2];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 4:
-		{
-			RelativeMove &m = BestMovePerPly[(b - 4)&(HALF_KILLERS - 1)][CurrentPly];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 5:
-		{
-			RelativeMove &m = BestMovePerPly[(bn - 2)&(HALF_KILLERS - 1)][CurrentPly - 2];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 6:
-		{
-			RelativeMove &m = BestMovePerPly[(b - 5)&(HALF_KILLERS - 1)][CurrentPly];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		/*
-		case 7:
-		{
-			RelativeMove &m = BestMovePerPly[(bn - 3)&(HALF_KILLERS - 1)][CurrentPly - 2];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 8:
-		{
-			RelativeMove &m = BestMovePerPly[(b - 6)&(HALF_KILLERS - 1)][CurrentPly];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 9:
-		{
-			RelativeMove &m = BestMovePerPly[(bn - 4)&(HALF_KILLERS - 1)][CurrentPly - 2];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 10:
-		{
-			RelativeMove &m = BestMovePerPly[(b - 7)&(HALF_KILLERS - 1)][CurrentPly];
-			assert(m.from <= NO_SLOT);
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 11:
-		{
-			RelativeMove &m = BestMovePerPly[(b - 8)&(HALF_KILLERS - 1)][CurrentPly];
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 12:
-		{
-			RelativeMove &m = BestMovePerPly[(bn - 5)&(HALF_KILLERS - 1)][CurrentPly - 2];
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 13:
-		{
-			RelativeMove &m = BestMovePerPly[(bn - 6)&(HALF_KILLERS - 1)][CurrentPly - 2];
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 14:
-		{
-			RelativeMove &m = BestMovePerPly[(bn - 7)&(HALF_KILLERS - 1)][CurrentPly - 2];
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-		case 15:
-		{
-			RelativeMove &m = BestMovePerPly[(bn - 8)&(HALF_KILLERS - 1)][CurrentPly - 2];
-			++i;
-			if (!m.empty()) {
-				*dest = &m;
-				return true;
-			}
-		}
-*/
-		}
-		return false;
 	}
+	case 2:
+	{
+		RelativeMove &m = BestMovePerPly[(b - 3)&(HALF_KILLERS - 1)][CurrentPly];
+		assert(m.from <= NO_SLOT);
+		++i;
+		if (!m.empty()) {
+			*dest = &m;
+			return true;
+		}
+	}
+	case 3:
+	{
+		RelativeMove &m = BestMovePerPly[(bn - 1)&(HALF_KILLERS - 1)][CurrentPly - 2];
+		assert(m.from <= NO_SLOT);
+		++i;
+		if (!m.empty()) {
+			*dest = &m;
+			return true;
+		}
+	}
+	case 4:
+	{
+		RelativeMove &m = BestMovePerPly[(b - 4)&(HALF_KILLERS - 1)][CurrentPly];
+		assert(m.from <= NO_SLOT);
+		++i;
+		if (!m.empty()) {
+			*dest = &m;
+			return true;
+		}
+	}
+	case 5:
+	{
+		RelativeMove &m = BestMovePerPly[(bn - 2)&(HALF_KILLERS - 1)][CurrentPly - 2];
+		assert(m.from <= NO_SLOT);
+		++i;
+		if (!m.empty()) {
+			*dest = &m;
+			return true;
+		}
+	}
+	case 6:
+	{
+		RelativeMove &m = BestMovePerPly[(b - 5)&(HALF_KILLERS - 1)][CurrentPly];
+		assert(m.from <= NO_SLOT);
+		++i;
+		if (!m.empty()) {
+			*dest = &m;
+			return true;
+		}
+	}
+	/*
+	case 7:
+	{
+	RelativeMove &m = BestMovePerPly[(bn - 3)&(HALF_KILLERS - 1)][CurrentPly - 2];
+	assert(m.from <= NO_SLOT);
+	++i;
+	if (!m.empty()) {
+	*dest = &m;
+	return true;
+	}
+	}
+	case 8:
+	{
+	RelativeMove &m = BestMovePerPly[(b - 6)&(HALF_KILLERS - 1)][CurrentPly];
+	assert(m.from <= NO_SLOT);
+	++i;
+	if (!m.empty()) {
+	*dest = &m;
+	return true;
+	}
+	}
+	case 9:
+	{
+	RelativeMove &m = BestMovePerPly[(bn - 4)&(HALF_KILLERS - 1)][CurrentPly - 2];
+	assert(m.from <= NO_SLOT);
+	++i;
+	if (!m.empty()) {
+	*dest = &m;
+	return true;
+	}
+	}
+	case 10:
+	{
+	RelativeMove &m = BestMovePerPly[(b - 7)&(HALF_KILLERS - 1)][CurrentPly];
+	assert(m.from <= NO_SLOT);
+	++i;
+	if (!m.empty()) {
+	*dest = &m;
+	return true;
+	}
+	}
+	case 11:
+	{
+	RelativeMove &m = BestMovePerPly[(b - 8)&(HALF_KILLERS - 1)][CurrentPly];
+	++i;
+	if (!m.empty()) {
+	*dest = &m;
+	return true;
+	}
+	}
+	case 12:
+	{
+	RelativeMove &m = BestMovePerPly[(bn - 5)&(HALF_KILLERS - 1)][CurrentPly - 2];
+	++i;
+	if (!m.empty()) {
+	*dest = &m;
+	return true;
+	}
+	}
+	case 13:
+	{
+	RelativeMove &m = BestMovePerPly[(bn - 6)&(HALF_KILLERS - 1)][CurrentPly - 2];
+	++i;
+	if (!m.empty()) {
+	*dest = &m;
+	return true;
+	}
+	}
+	case 14:
+	{
+	RelativeMove &m = BestMovePerPly[(bn - 7)&(HALF_KILLERS - 1)][CurrentPly - 2];
+	++i;
+	if (!m.empty()) {
+	*dest = &m;
+	return true;
+	}
+	}
+	case 15:
+	{
+	RelativeMove &m = BestMovePerPly[(bn - 8)&(HALF_KILLERS - 1)][CurrentPly - 2];
+	++i;
+	if (!m.empty()) {
+	*dest = &m;
+	return true;
+	}
+	}
+	*/
+	}
+	return false;
+}
 
 //KillerMoves QuietKillers;
 //KillerMoves CaptureKillers;
@@ -5308,16 +5395,16 @@ CountMoveStruct CounterMoveTable[NUM_PIECE_SLOTS*NUM_PIECE_SLOTS*(h1 - a8 + 1) *
 CountMoveStruct &CounterMove(bool quiescent, RelativeMove &r)
 {
 	if (r.from == NO_SLOT) return EmptyCMS;
-//	return CounterMoveTable[s + (h1 - a8 + 1)*(from - a8) + ((h1 - a8 + 1)*(h1 - a8 + 1))*(to - a8)];
-	return CounterMoveTable[ (r.to-a8)+ (h1 - a8 + 1)*((r.from_pos - a8) + (h1 - a8 + 1)*(r.from + NUM_PIECE_SLOTS*(r.slot_taken +(quiescent? NUM_PIECE_SLOTS:0)
+	//	return CounterMoveTable[s + (h1 - a8 + 1)*(from - a8) + ((h1 - a8 + 1)*(h1 - a8 + 1))*(to - a8)];
+	return CounterMoveTable[(r.to - a8) + (h1 - a8 + 1)*((r.from_pos - a8) + (h1 - a8 + 1)*(r.from + NUM_PIECE_SLOTS*(r.slot_taken + (quiescent ? NUM_PIECE_SLOTS : 0)
 		)))];
 }
 
 bool EnableHistory;
 struct MoveGenerator
 {
-	enum State { Initial,  PositiveCaptures, DoCounterMove, Killers, GeneratedMoves, BEFORE_IID, IID };
-	Move killer_moves[NUM_KILLERS+2];
+	enum State { Initial, PositiveCaptures, DoCounterMove, Killers, GeneratedMoves, BEFORE_IID, IID };
+	Move killer_moves[NUM_KILLERS + 2];
 	int num_killer;
 	int killer_iterator;
 	int capture_iterator;
@@ -5357,9 +5444,9 @@ struct MoveGenerator
 			killer_moves[num_killer++] = initial;
 		}
 	}
-	MoveGenerator(int depth, Move &initial, RelativeMove &lpm, int v,bool ti)
+	MoveGenerator(int depth, Move &initial, RelativeMove &lpm, int v, bool ti)
 	{
-		init(depth, initial,lpm,v,ti);
+		init(depth, initial, lpm, v, ti);
 	}
 	MoveGenerator()
 	{
@@ -5369,12 +5456,12 @@ struct MoveGenerator
 		NumPinMoves[side] -= num_pin_moves;
 	}
 	//returns see value of move or -INF for done
-	int next(Move &c, State *kind=nullptr, int *value=nullptr)
+	int next(Move &c, State *kind = nullptr, int *value = nullptr)
 	{
 		switch (state) {
 		case Initial:
 			if (kind) *kind = state;
-//			state = PositiveCaptures;
+			//			state = PositiveCaptures;
 			if (initial_ok) {
 				c = killer_moves[0];
 
@@ -5385,71 +5472,71 @@ struct MoveGenerator
 				else {
 					state = BEFORE_IID;
 					//initial_ok = false;
-					return 1<<10;//dummy value
+					return 1 << 10;//dummy value
 				}
 				--num_killer;
 			}
-/*
+			/*
 			state = CounterCaptures;
-		case CounterCaptures:
+			case CounterCaptures:
 			if (last_piece_moved != OFF_BOARD && !is_king(Players.pieces[last_piece_moved])) {
-				while (!MovesOrdered.empty() || GenThreat(capture_iterator, other_color(side), Players.positions[last_piece_moved])) {
-					while (MovesOrdered.find_best() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
-						) {
-						MovesOrdered.best().make();
-						if (king_in_check(side)) {//illegal to make a move that leaves your king in check
-							MovesOrdered.best().unmake();
-							continue;
-						}
-						c = MovesOrdered.best();
-						if (kind) *kind = state;
-						capture_iterator = 26;
-						return MovesOrdered.best_value();
-					}
-				}
+			while (!MovesOrdered.empty() || GenThreat(capture_iterator, other_color(side), Players.positions[last_piece_moved])) {
+			while (MovesOrdered.find_best() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
+			) {
+			MovesOrdered.best().make();
+			if (king_in_check(side)) {//illegal to make a move that leaves your king in check
+			MovesOrdered.best().unmake();
+			continue;
+			}
+			c = MovesOrdered.best();
+			if (kind) *kind = state;
+			capture_iterator = 26;
+			return MovesOrdered.best_value();
+			}
+			}
 			}
 			*/
-/*
+			/*
 			state = DoCounterMove;
 
-		case DoCounterMove:
-		{
-			if (false) 
+			case DoCounterMove:
 			{
-				HashMove &counter_move = CounterMove(quiescent, last_move).get();
-				if (!counter_move.empty()) {
-					bool duplicate = false;
-					for (int i = 0;i < num_killer;++i) if (counter_move.from == killer_moves[i].from && counter_move.to == killer_moves[i].to) { duplicate = true; break; }
-					if (!duplicate) {
-						c = TestMove(side, Board[counter_move.from], counter_move.to, counter_move.became);
-						if (!(c.empty())) {
-							c.make();
-							if (king_in_check(side)) {//illegal to make a move that leaves your king in check
-								c.unmake();
-							}
-							else {
-								killer_moves[num_killer++] = c;
-								if (kind) *kind = state;
-								state = Killers;
-								return 1 << 10;//dummy value
-							}
-						}
-					}
-				}
+			if (false)
+			{
+			HashMove &counter_move = CounterMove(quiescent, last_move).get();
+			if (!counter_move.empty()) {
+			bool duplicate = false;
+			for (int i = 0;i < num_killer;++i) if (counter_move.from == killer_moves[i].from && counter_move.to == killer_moves[i].to) { duplicate = true; break; }
+			if (!duplicate) {
+			c = TestMove(side, Board[counter_move.from], counter_move.to, counter_move.became);
+			if (!(c.empty())) {
+			c.make();
+			if (king_in_check(side)) {//illegal to make a move that leaves your king in check
+			c.unmake();
 			}
-		}
-*/
+			else {
+			killer_moves[num_killer++] = c;
+			if (kind) *kind = state;
+			state = Killers;
+			return 1 << 10;//dummy value
+			}
+			}
+			}
+			}
+			}
+			}
+			*/
 		case BEFORE_IID:
 			state = IID;
-		if (kind) *kind = state;
-		if (quiescent) {
+			if (kind) *kind = state;
+			if (quiescent) {
 				//if (NumPins[side] != 0) {
 				//	num_pin_moves = GenPinMoves(side, NumPinMoves[side], PinMoves[side],val,depth);
 				//}
-				QGenMoves(side,val,depth);
+				QGenMoves(side, val, depth);
 			}
 			else {
-				GenMoves(side,val,depth);
+				GenMoves(side, val, depth);
 			}
 			if (//!initial_ok && 
 				try_iid)return 0;
@@ -5460,137 +5547,137 @@ struct MoveGenerator
 			found = false;
 			//if (!quiescent)
 			while (MovesOrdered.find_best() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
-//			while (!MovesOrdered.empty() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
-					) {
+											//			while (!MovesOrdered.empty() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
+				) {
 				if (MovesOrdered.best().empty()) continue;
 				//				if (last_piece_moved != OFF_BOARD && MovesOrdered.best().slot_taken == last_piece_moved && MovesOrdered.best().is_enpassant()==false) continue;
 				if (++count_positive > 2 || MovesOrdered.best_value() >> 10 <= 0) {
-//				if (MovesOrdered.back_value() >> 10 <= 0) {
+					//				if (MovesOrdered.back_value() >> 10 <= 0) {
 					found = true;
 					break;
 				}
 				if (is_king(MovesOrdered.best().piece_taken)) {
-//				if (is_king(MovesOrdered.back().piece_taken)) {
-//					MovesOrdered.pop();
+					//				if (is_king(MovesOrdered.back().piece_taken)) {
+					//					MovesOrdered.pop();
 					continue;
 				}
-//				cout << '.';
+				//				cout << '.';
 				MovesOrdered.best().make();
-//				MovesOrdered.back().make();
+				//				MovesOrdered.back().make();
 				if (king_in_check(side)) {//illegal to make a move that leaves your king in check
 					MovesOrdered.best().unmake();
-//					MovesOrdered.back().unmake();
-//					MovesOrdered.pop();
+					//					MovesOrdered.back().unmake();
+					//					MovesOrdered.pop();
 					continue;
 				}
 				c = MovesOrdered.best();
-//				c = MovesOrdered.back();
-//				int v = MovesOrdered.back_value();
+				//				c = MovesOrdered.back();
+				//				int v = MovesOrdered.back_value();
 				int v = MovesOrdered.best_value();
 				//MovesOrdered.pop();
 				if (kind) *kind = state;
 				return v;
 			}
-//			if (CurrentPly < 7) {
-//				state = GeneratedMoves;
-//				MovesOrdered.add_history(quiescent);
-//			}
-//		else
+			//			if (CurrentPly < 7) {
+			//				state = GeneratedMoves;
+			//				MovesOrdered.add_history(quiescent);
+			//			}
+			//		else
 
 #define KILLERS
 #ifdef KILLERS
-				state = Killers;
+			state = Killers;
 		case Killers:
 			//if (EnableHistory && (initial_ok || depth < IID_NUM + 2))
-			{
+		{
 			if (kind) *kind = state;
 			RelativeMove *m;
-				while (get_killers(&m, killer_iterator)) {
-					if (Players.pieces[m->from] == EMPTY) continue;
-					bool duplicate = false;
-					for (int i = 0;i < num_killer;++i) if (*m == killer_moves[i]) { duplicate = true; break; }
-					if (duplicate) continue;
-					if (Board[m->from_pos] == m->from && (Board[m->to]==NO_SLOT || color(Board[m->to])!= side)) {
-						c = TestMove(side, m->from, m->to, m->promotion);
-					}
-					else continue;
-					if (c.empty()) continue;
-					c.make();
-					if (king_in_check(side)) {//illegal to make a move that leaves your king in check
-						c.unmake();
-						continue;
-					}
-					killer_moves[num_killer++] = c;
-//					cout << '+';
-					if (kind) *kind = state;
-					return 1 << 10;//dummy value
+			while (get_killers(&m, killer_iterator)) {
+				if (Players.pieces[m->from] == EMPTY) continue;
+				bool duplicate = false;
+				for (int i = 0;i < num_killer;++i) if (*m == killer_moves[i]) { duplicate = true; break; }
+				if (duplicate) continue;
+				if (Board[m->from_pos] == m->from && (Board[m->to] == NO_SLOT || color(Board[m->to]) != side)) {
+					c = TestMove(side, m->from, m->to, m->promotion);
 				}
-				for (int i = 0;i < num_killer;++ i) {
-					if (sort_pv(killer_moves[i])) MovesOrdered.pop();
+				else continue;
+				if (c.empty()) continue;
+				c.make();
+				if (king_in_check(side)) {//illegal to make a move that leaves your king in check
+					c.unmake();
+					continue;
 				}
-				if (found) state = GeneratedMoves;
-				else return -INF;
+				killer_moves[num_killer++] = c;
+				//					cout << '+';
+				if (kind) *kind = state;
+				return 1 << 10;//dummy value
+			}
+			for (int i = 0;i < num_killer;++i) {
+				if (sort_pv(killer_moves[i])) MovesOrdered.pop();
+			}
+			if (found) state = GeneratedMoves;
+			else return -INF;
 		}
 #endif
-			state = GeneratedMoves;
-			//			*/
+		state = GeneratedMoves;
+		//			*/
 #define HISTORY_HEURISTIC
 #ifdef HISTORY_HEURISTIC
-			//if (//initial_ok 
-			//	(!try_iid || depth < IID_NUM + 2) && EnableHistory) 
-				MovesOrdered.add_history(quiescent);
+		//if (//initial_ok 
+		//	(!try_iid || depth < IID_NUM + 2) && EnableHistory) 
+		MovesOrdered.add_history(quiescent);
 #endif
-			//bool LazyGenMove(int &i, bool quiescent, Colors c, Move *killer_moves, int num_killer)
-			state = GeneratedMoves;
+		//bool LazyGenMove(int &i, bool quiescent, Colors c, Move *killer_moves, int num_killer)
+		state = GeneratedMoves;
 
 		case GeneratedMoves:
 			if (kind) *kind = state;
 			while (found || MovesOrdered.find_best() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
-//			while (!MovesOrdered.empty() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
-					) {
-					found = false;
-					if (MovesOrdered.best().empty()) continue;
-//					if (!history_sorted && MovesOrdered.best_value() <= 0) {
-//						history_sorted = true;
-//						MovesOrdered.add_history(quiescent);
-//						found = true;
-//						continue;
-//					}
-//				if (MovesOrdered.back().empty()) { MovesOrdered.pop(); continue; }
+													 //			while (!MovesOrdered.empty() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
+				) {
+				found = false;
+				if (MovesOrdered.best().empty()) continue;
+				//					if (!history_sorted && MovesOrdered.best_value() <= 0) {
+				//						history_sorted = true;
+				//						MovesOrdered.add_history(quiescent);
+				//						found = true;
+				//						continue;
+				//					}
+				//				if (MovesOrdered.back().empty()) { MovesOrdered.pop(); continue; }
 
-//					if (last_piece_moved != OFF_BOARD && MovesOrdered.best().slot_taken == last_piece_moved && MovesOrdered.best().is_enpassant() == false) continue;
-//				if (is_king(MovesOrdered.back().piece_taken)) {
-					if (is_king(MovesOrdered.best().piece_taken)) {
-//					MovesOrdered.pop();
-						continue;
-					}
-//					cout << ';';
-					MovesOrdered.best().make();
-//					MovesOrdered.back().make();
-					if (king_in_check(side)) {//illegal to make a move that leaves your king in check
-						MovesOrdered.best().unmake();
-//						MovesOrdered.back().unmake();
-//						MovesOrdered.pop();
-						continue;
-					}
-					c = MovesOrdered.best();
-//					c = MovesOrdered.back();
-//					int v = MovesOrdered.back_value();
-					int v = MovesOrdered.best_value();
-//					MovesOrdered.pop();
-
-					if (kind) *kind = state;
-//					return MovesOrdered.best_value();
-					return v;
+				//					if (last_piece_moved != OFF_BOARD && MovesOrdered.best().slot_taken == last_piece_moved && MovesOrdered.best().is_enpassant() == false) continue;
+				//				if (is_king(MovesOrdered.back().piece_taken)) {
+				if (is_king(MovesOrdered.best().piece_taken)) {
+					//					MovesOrdered.pop();
+					continue;
 				}
+				//					cout << ';';
+				MovesOrdered.best().make();
+				//					MovesOrdered.back().make();
+				if (king_in_check(side)) {//illegal to make a move that leaves your king in check
+					MovesOrdered.best().unmake();
+					//						MovesOrdered.back().unmake();
+					//						MovesOrdered.pop();
+					continue;
+				}
+				c = MovesOrdered.best();
+				//					c = MovesOrdered.back();
+				//					int v = MovesOrdered.back_value();
+				int v = MovesOrdered.best_value();
+				//					MovesOrdered.pop();
+
+				if (kind) *kind = state;
+				//					return MovesOrdered.best_value();
+				return v;
+			}
 			/*
 			if (!MovesOrdered.empty()) {
-				c = MovesOrdered.back();
-				if (value) *value = MovesOrdered.back_value();
-				c.make();
-				MovesOrdered.pop();
-				if (kind) *kind = state;
-				return true;
+			c = MovesOrdered.back();
+			if (value) *value = MovesOrdered.back_value();
+			c.make();
+			MovesOrdered.pop();
+			if (kind) *kind = state;
+			return true;
 			}*/
 			return -INF;
 		}
@@ -5612,7 +5699,7 @@ int _perft(int d, bool partition)
 	bool check = king_in_check(PlySide());
 	int e = Enpassants;
 	inc_ply();
-	GenMoves(other_color(PlySide()),0,-20);
+	GenMoves(other_color(PlySide()), 0, -20);
 	if (d != 1) Enpassants = e;
 	while (!MovesOrdered.empty()) {
 		int e_2 = Enpassants;
@@ -5623,12 +5710,12 @@ int _perft(int d, bool partition)
 			MovesOrdered.pop();
 			continue;
 		}
-//		bool p = d==2 && MovesOrdered.back().from == e5 && MovesOrdered.back().to == d7;
+		//		bool p = d==2 && MovesOrdered.back().from == e5 && MovesOrdered.back().to == d7;
 		++moves;
 		if (d > 0) {
-			if (MovesOrdered.back().piece_taken != EMPTY && d==1) ++CapturesC;
+			if (MovesOrdered.back().piece_taken != EMPTY && d == 1) ++CapturesC;
 			int p_nodes = _perft(d - 1, false);
-			if (partition) printf("%s %d\n",move_str(MovesOrdered.back()),p_nodes);
+			if (partition) printf("%s %d\n", move_str(MovesOrdered.back()), p_nodes);
 			nodes += p_nodes;
 		}
 		MovesOrdered.back().unmake();
@@ -5638,7 +5725,7 @@ int _perft(int d, bool partition)
 
 	if (check) {
 		if (d == 0 && moves == 0) ++Checkmates;
-		if (d==0) ++Checks;
+		if (d == 0) ++Checks;
 	}
 	if (d == 0) return 1;
 	return nodes;
@@ -5651,7 +5738,7 @@ int perft(int d)
 	Checkmates = 0;
 	Enpassants = 0;
 	Castles = 0;
-	return _perft(d,true);
+	return _perft(d, true);
 }
 #define STAND_PAT
 
@@ -5678,8 +5765,6 @@ RelativeMove EmptyMove;
 
 int CheckupNodes;
 
-int NCNodes = 0;
-int NCMidNodes = 0;
 
 int NumFailHighNodes = 0;
 int NumberOnFirstMove = 0;
@@ -5688,7 +5773,7 @@ int MinDepth;
 
 bool InIID = false;
 
-int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, bool alpha_real, bool beta_real,RelativeMove &last_move, bool in_pv)
+int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, bool alpha_real, bool beta_real, RelativeMove &last_move,bool in_check, int realdepth)
 {
 	PieceSlotType last_piece_moved = last_move.from;
 	if (d <= 0) {
@@ -5707,7 +5792,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 		NumPinMoves[PlySide()] = 0;
 	}
 	Colors my_color = PlySide();
-	HashTableEntry *n=nullptr;
+	HashTableEntry *n = nullptr;
 	Move m2;
 	int move_depth = -127;
 #ifndef IGNORE_TT
@@ -5725,7 +5810,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			m2.make();
 			hash_move_repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
 			if (hash_move_repeat) {
-//				upper = lower = -n->get_eval() >> 1;
+				//				upper = lower = -n->get_eval() >> 1;
 				if ((CurrentPly & 1) == 0) upper = lower = -2 * PAWN_VALUE;
 				else upper = lower = 2 * PAWN_VALUE;
 			}
@@ -5748,15 +5833,15 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			}
 			else {
 				if (d <= 0) { --MidNodes; }
-				else { 
-/*
-int NumFailHighNodes = 0;
-int NumberOnFirstMove = 0;
-int NumberOfFailHighMoves = 0;
-*/	
-//					++NumFailHighNodes;
-//					++NumberOnFirstMove;
-					--NCMidNodes; 
+				else {
+					/*
+					int NumFailHighNodes = 0;
+					int NumberOnFirstMove = 0;
+					int NumberOfFailHighMoves = 0;
+					*/
+					//					++NumFailHighNodes;
+					//					++NumberOnFirstMove;
+					--NCMidNodes;
 				}
 				return lower;
 			}
@@ -5766,7 +5851,7 @@ int NumberOfFailHighMoves = 0;
 			if (CurrentPly == 0) {
 				if (!m2.empty()) {
 					Ply0Move = m2;
-					if (d<=0) --MidNodes; else --NCMidNodes;
+					if (d <= 0) --MidNodes; else --NCMidNodes;
 					return lower;
 				}
 				else {
@@ -5775,7 +5860,7 @@ int NumberOfFailHighMoves = 0;
 				}
 			}
 			else {
-				if (d<=0) --MidNodes; else --NCMidNodes;
+				if (d <= 0) --MidNodes; else --NCMidNodes;
 				return upper;
 			}
 		}
@@ -5797,26 +5882,26 @@ int NumberOfFailHighMoves = 0;
 #ifdef SIMPLE_EVAL
 		true;
 #else
-		InIID||alpha == beta - 1;
+		InIID || alpha == beta - 1;
 #endif
 	if (d == -QUIESCENT_DEPTH) {
-		g = (n == nullptr ? (ninpv ? simple_eval() :eval()) : n->get_eval(ninpv)); /* leaf node */
-		//if (ninpv && abs(beta - g) < PAWN_VALUE>>1) g = (n == nullptr ? eval(): n->get_eval(false));
-		//if (MinDepth<6 && last_piece_moved != OFF_BOARD) g = g - SEE(Players.positions[last_piece_moved]);
+		g = (n == nullptr ? (ninpv ? simple_eval() : eval()) : n->get_eval(ninpv)); /* leaf node */
+																					//if (ninpv && abs(beta - g) < PAWN_VALUE>>1) g = (n == nullptr ? eval(): n->get_eval(false));
+																					//if (MinDepth<6 && last_piece_moved != OFF_BOARD) g = g - SEE(Players.positions[last_piece_moved]);
 	}
 	else {
 		int val = (n == nullptr ? simple_eval() : n->get_eval(true));
 
 
-		
-		if (last_piece_moved != OFF_BOARD) val = val - SEE(Players.positions[last_piece_moved]);
+
+		if (last_piece_moved != OFF_BOARD) val = val;// -SEE(Players.positions[last_piece_moved]);
 		int lower_val = (n == nullptr ? val : (n->get_lower(-QUIESCENT_DEPTH) == -INF ? val : n->get_lower(-QUIESCENT_DEPTH)));
 		lower_val = __max(lower_val, val);
-		const bool in_check = king_in_check(PlySide());
+//		const bool in_check = king_in_check(PlySide());
 
 #ifdef FUTILITY
 		if (CheckForEndgame &&
-			alpha == beta - 1 && !in_check && CurrentPly > 3 && !(close_to_mate(alpha) || close_to_mate(beta))) {
+			alpha == beta - 1 && !in_check && d < 3 && !(close_to_mate(alpha) || close_to_mate(beta))) {
 			if (n != nullptr && n->get_upper(d - 1) + ROOK_VALUE < alpha) {
 				if (d <= 0) --MidNodes; else --NCMidNodes;
 				return n->get_upper(d - 1);
@@ -5829,8 +5914,8 @@ int NumberOfFailHighMoves = 0;
 			//				if (d <= 0) --MidNodes; else --NCMidNodes;
 			//				return n->get_upper(d - 2);
 			//			}
-						//			if (d == 1 && val + BISHOP_VALUE < alpha) return val;
-						//			if (d == 2 && val + ROOK_VALUE < alpha) return val;
+			//			if (d == 1 && val + BISHOP_VALUE < alpha) return val;
+			//			if (d == 2 && val + ROOK_VALUE < alpha) return val;
 		}
 #endif
 		if (d < 1 && !in_check)
@@ -5839,18 +5924,18 @@ int NumberOfFailHighMoves = 0;
 				if (d <= 0) --MidNodes; else --NCMidNodes;
 				return lower_val; //stand pat
 			}
-//			if (n != nullptr){
-//				int l = n->get_lower(-QUIESCENT_DEPTH);
-//				if (l >= beta) {
-//					if (d <= 0) --MidNodes; else --NCMidNodes;
-//					return l;
-//				}
-//			}
+			//			if (n != nullptr){
+			//				int l = n->get_lower(-QUIESCENT_DEPTH);
+			//				if (l >= beta) {
+			//					if (d <= 0) --MidNodes; else --NCMidNodes;
+			//					return l;
+			//				}
+			//			}
 		}
 
 #ifdef REVERSE_FUTILITY
 		if (CheckForEndgame &&
-			alpha == beta - 1 && !in_check && CurrentPly > 3 && !(close_to_mate(alpha) || close_to_mate(beta))) {
+			alpha == beta - 1 && !in_check && d < 3 && !(close_to_mate(alpha) || close_to_mate(beta))) {
 			if (n != nullptr && n->get_lower(d - 1) - BISHOP_VALUE > beta) {
 				if (d <= 0) { --MidNodes; }
 				else {
@@ -5862,28 +5947,28 @@ int NumberOfFailHighMoves = 0;
 			}
 			/*
 			if (n != nullptr && n->get_lower(d - 2) - ROOK_VALUE > beta) {
-				if (d <= 0) { --MidNodes; }
-				else {
-//					++NumFailHighNodes;
-//					++NumberOnFirstMove;
-					--NCMidNodes;
-				}
-				return n->get_lower(d - 2);
+			if (d <= 0) { --MidNodes; }
+			else {
+			//					++NumFailHighNodes;
+			//					++NumberOnFirstMove;
+			--NCMidNodes;
+			}
+			return n->get_lower(d - 2);
 			}
 			if (n != nullptr && n->get_lower(d - 3) - QUEEN_VALUE - PAWN_VALUE > beta) {
-				if (d <= 0) { --MidNodes; }
-				else {
-					//					++NumFailHighNodes;
-					//					++NumberOnFirstMove;
-					--NCMidNodes;
-				}
-				return n->get_lower(d - 3);
+			if (d <= 0) { --MidNodes; }
+			else {
+			//					++NumFailHighNodes;
+			//					++NumberOnFirstMove;
+			--NCMidNodes;
+			}
+			return n->get_lower(d - 3);
 			}
 			if (CurrentPly > 3 && d == 1 && val - BISHOP_VALUE > beta) return val;
 			if (beta_real && CurrentPly > 3 && d == 2 && val - ROOK_VALUE > beta) return val;
-*/
+			*/
 			if (CurrentPly > 3 && d == 1 && lower_val - BISHOP_VALUE > beta) return val;
-//			if (beta_real && CurrentPly > 3 && d == 2 && lower_val - ROOK_VALUE > beta) return val;
+			//			if (beta_real && CurrentPly > 3 && d == 2 && lower_val - ROOK_VALUE > beta) return val;
 		}
 #endif
 
@@ -5893,7 +5978,6 @@ int NumberOfFailHighMoves = 0;
 			alpha == beta - 1 &&
 			lower_val> beta - BISHOP_VALUE &&
 			//val < beta + BISHOP_VALUE &&
-			//!in_pv &&
 			//beta != INF &&
 			//!in_null 
 			!in_null
@@ -5909,8 +5993,8 @@ int NumberOfFailHighMoves = 0;
 			int new_depth;
 			try {
 				new_depth = __max(d - 4, 1);//
-				//(d>6?d - 5: __max(d - 4, 0));
-				new_value = -NegaScout(-beta, -beta + 1, new_depth, true, true, beta_real, false, EmptyMove, false);
+											//(d>6?d - 5: __max(d - 4, 0));
+				new_value = -NegaScout(-beta, -beta + 1, new_depth, true, true, beta_real, false, EmptyMove,false,new_depth);
 			}
 			catch (OutOfTimeException) {
 				dec_ply();
@@ -5918,17 +6002,18 @@ int NumberOfFailHighMoves = 0;
 			}
 			dec_ply();
 			if (new_value >= beta) {
-				//					new_value = NegaScout(beta - 1, beta, new_depth, true, somewhere_in_null, false, beta_real, last_move, false);
-				//				if (new_value >= beta) {
-				if (d <= 0)  --MidNodes; else --NCMidNodes;
-				return new_value;
-				//				}
+				new_value = NegaScout(beta - 1, beta, new_depth, true, somewhere_in_null, false, beta_real, last_move,in_check, new_depth);
+				if (new_value >= beta) {
+					if (d <= 0)  --MidNodes; else --NCMidNodes;
+					return new_value;
+				}
 			}
 		}
 #endif
 		if (d == 1)--NCMidNodes;
 		Move c;
 		Move best_move;
+		int last_depth = d - 1;
 		//int best_value;
 		MoveGenerator::State best_move_type;
 
@@ -5957,6 +6042,8 @@ int NumberOfFailHighMoves = 0;
 		}
 		else {
 			int move_value;
+			bool other_in_check;
+			RelativeMove r;
 			while ((g < beta) && -INF != (move_value = moves.next(c, &move_type, &iid_value))) {
 				++num_moves;
 				if (a != alpha) EnableHistory = false;
@@ -5981,11 +6068,24 @@ int NumberOfFailHighMoves = 0;
 							{
 								c = MovesOrdered.best();
 								c.make();
+								{
+										intptr_t h = (intptr_t)&HashTable[((int)(Hash.low) & HASH_MASK)];
+								//		intptr_t aligned = h&-64;
+								//		intptr_t len = h - aligned + sizeof(HashTableEntry);
+										_mm_prefetch((char *)(h), _MM_HINT_T0);
+								//		_mm_prefetch((char *)(aligned+64), _MM_HINT_T0);
+								//		_mm_prefetch((char *)(aligned+128), _MM_HINT_T0);
+
+								//				for (intptr_t i = 0;i < len;i += 64)
+								//					_mm_prefetch((char *)(i + aligned), _MM_HINT_T0);
+								}
+
+								const bool other_in_check = king_in_check(PlySide());
 								int val2 = -INF;
-								if (val1 != -INF) val2 = NegaScout(-val1 + 1, -val1, iid_depth, false, somewhere_in_null, beta_real, alpha_real, RelativeMove(c), false);
-								if (val2 > val1 || val2 == -INF) val2 = -NegaScout(-beta, -val1, iid_depth, false, somewhere_in_null, beta_real, alpha_real, RelativeMove(c), false);
+								if (val1 != -INF) val2 = NegaScout(-val1 + 1, -val1, iid_depth, false, somewhere_in_null, beta_real, alpha_real, RelativeMove(c), other_in_check,iid_depth);
+								if (val2 > val1 || val2 == -INF) val2 = -NegaScout(-beta, -val1, iid_depth, false, somewhere_in_null, beta_real, alpha_real, RelativeMove(c), other_in_check,iid_depth);
 								if (val2 > val1) val1 = val2;
-								MovesOrdered.unmarked_value() = val1;
+								MovesOrdered.unmarked_value() = (val1-val)<<10;
 								c.unmake();
 							}
 						}
@@ -6006,49 +6106,136 @@ int NumberOfFailHighMoves = 0;
 					c.unmake();
 					break;
 				}
-				RelativeMove r(c);
-				bool delay = false;
+				{
+					intptr_t h = (intptr_t)&HashTable[((int)(Hash.low) & HASH_MASK)];
+					//		intptr_t aligned = h&-64;
+					//		intptr_t len = h - aligned + sizeof(HashTableEntry);
+					_mm_prefetch((char *)(h), _MM_HINT_T0);
+					//		_mm_prefetch((char *)(aligned+64), _MM_HINT_T0);
+					//		_mm_prefetch((char *)(aligned+128), _MM_HINT_T0);
+
+					//				for (intptr_t i = 0;i < len;i += 64)
+					//					_mm_prefetch((char *)(i + aligned), _MM_HINT_T0);
+				}
+				other_in_check = king_in_check(PlySide());
+
+
+				r=c;
+				int delay = 0;
 				++move_count;
 				//moves.next calls c.make()
 				int new_depth = d - 1;
+				if (new_depth<realdepth - 1 && (other_in_check || !(c.became == c.initial || is_pawn(c.became) || is_rook(c.initial) || is_king(c.initial)))) {
+					new_depth = realdepth - 1;
+				}
+				else if (new_depth<realdepth - 2 && move_value > PAWN_VALUE << 10) {
+					if (move_value > (ROOK_VALUE-2*PAWN_VALUE) << 10) new_depth = realdepth - 1;
+					else new_depth = realdepth - 2;
+				}
 				bool skip_high_fail = false;
 				/*
 
 				if (move_type == MoveGenerator::IID) {
-					if (++reduced > 1 && d > 3) {
-						skip_high_fail = true;
-						new_depth = d - 3;
-					}
-					else {
-						new_depth = d - 2;
-						if (d==2) skip_high_fail = true;
-					}
+				if (++reduced > 1 && d > 3) {
+				skip_high_fail = true;
+				new_depth = d - 3;
 				}
 				else {
-					delay = d > 2 && !in_check && (move_type != MoveGenerator::GeneratedMoves) && c.slot_taken == NO_SLOT && c.became == c.initial && !is_king(c.initial);
-					if (delay) new_depth = d - 3;
-					else new_depth = d - 1;
+				new_depth = d - 2;
+				if (d==2) skip_high_fail = true;
 				}
-*/
-//				if (d < 3 && ((CurrentPly & 1) == 1) && move_count > 1 && move_type == MoveGenerator::GeneratedMoves && c.slot_taken != NO_SLOT) {
-//					c.unmake();
-//					continue;
-//				}
+				}
+				else {
+				delay = d > 2 && !in_check && (move_type != MoveGenerator::GeneratedMoves) && c.slot_taken == NO_SLOT && c.became == c.initial && !is_king(c.initial);
+				if (delay) new_depth = d - 3;
+				else new_depth = d - 1;
+				}
+				*/
+				//				if (d < 3 && ((CurrentPly & 1) == 1) && move_count > 1 && move_type == MoveGenerator::GeneratedMoves && c.slot_taken != NO_SLOT) {
+				//					c.unmake();
+				//					continue;
+				//				}
 #ifdef LMR
-				delay = CheckForEndgame && d > 2 && !in_check && move_type == MoveGenerator::GeneratedMoves //(iid_value >> 10 <= 0)  // || move_count>=3) 
-					//&& c.slot_taken == NO_SLOT 
-					&& c.became == c.initial && !is_king(c.initial)
-					&& !(is_pawn(c.initial));
-				if (delay) {
-					++reduced;
-					if (//alpha == beta - 1 && 
-						d > 3 && reduced > 3
-						)
-						new_depth = d - 3; else new_depth = d - 2;
-				}
-				if (delay && c.slot_taken != NO_SLOT && a != beta - 1) ++new_depth;
+				if (!other_in_check
+					&& d > 1 && !in_check //&& move_type == MoveGenerator::GeneratedMoves //(iid_value >> 10 <= 0)  // || move_count>=3) 
+										  //&&  a == beta - 1
+										  //&& c.slot_taken != NO_SLOT
+					&& (c.became == c.initial || is_pawn(c.became) || is_rook(c.initial) || is_king(c.initial))
+					&& !is_king(c.initial)
+					&& !(is_pawn(c.initial))) {
+					if (a == beta - 1 || InIID
+						) {
+						if (c.slot_taken != NO_SLOT) {
+							//non pv, non capture
+							if (move_value <= 0 || move_count > 3) // && CheckForEndgame 
+							{
+								++reduced;
+								--new_depth;
+								if (d > 2 && reduced > 3) {
+									--new_depth;
+									if (d > 3 && reduced > 7) {
+										--new_depth;
+										++delay;
+										if (d > 4 && reduced > 13) {
+											--new_depth;
+											++delay;
+										}
+									}
+								}
+							}
+						}
+						else {
+							//non pv, capture
+							if (move_value <= 0 || move_count > 5) // && CheckForEndgame 
+							{
+								++reduced;
+								--new_depth;
+								++delay;
+								if (d > 2 && reduced > 3) {
+									--new_depth;
+									++delay;
+								}
+							}
+						}
+					}
+					else {
+						if (c.slot_taken != NO_SLOT) {
+							//pv, non capture
+							if (move_value <= 0 && move_count > 2) // && CheckForEndgame 
+							{
+								++reduced;
+								--new_depth;
+								//++delay;
+								if (d > 2 && reduced > 3) {
+									--new_depth;
+									++delay;
+								}
+							}
+						}
+						else {
+							//pv, capture
+							if (move_value <= 0 && move_count > 2) // && CheckForEndgame 
+							{
+								++reduced;
+								--new_depth;
+								++delay;
+							}
+						}
+					}
+				}//else if (other)
+				bool wasIID = InIID;
+//				if (delay>0) {
+//					InIID = true;
+	//				if (alpha == beta - 1 && 
+						
+						//c.slot_taken != NO_SLOT &&
+					//	d > 3 && reduced > 4 //&& move_value <=0
+					//	)
+					//	new_depth = d - 3; else new_depth = d - 2;
+//				}
+//				if (delay && c.slot_taken != NO_SLOT && a != beta - 1) ++new_depth;
 #endif
-//				if (a != beta - 1 && (CurrentPly & 3) == 1) ++new_depth;
+				//				if (a != beta - 1 && (CurrentPly & 3) == 1) ++new_depth;
 				//if (iid_value >> 10 <= 0 && move_count > 3) {
 				//	delay = true;
 				//	new_depth = d - 2;
@@ -6057,42 +6244,48 @@ int NumberOfFailHighMoves = 0;
 				bool repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
 				try {
 					int val1;
+#define VERIFYLMR
+
+#ifdef VERIFYLMR
 					if (!repeat && delay) {
 						if (a != -INF) {
-							//							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to]);
-							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, true, r, false);
-							//							val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, Board[c.to]);
+							//							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to],other_in_check,realdepth-1);
+							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, true, r, other_in_check, realdepth - 1);
+							//							val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, Board[c.to],other_in_check,realdepth-1);
 							if (val1 > a) {
-								new_depth = d - 1;
-								delay = false;
+								new_depth+=delay;
+								//new_depth = d - 1;
+								delay = 0;
 							}
 						}
 						else {
-							//							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to]);
+							//							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to],other_in_check,realdepth-1);
 							new_depth = d - 1;
-							delay = false;
+							delay = 0;
 						}
-						//delay = false;
+						delay = 0;
 					}
+#endif
+					last_depth = new_depth;
 					if (repeat) {
 						if ((CurrentPly & 1) == 1) val1 = -2 * PAWN_VALUE;
 						//if ((CurrentPly & 1) == 1 && val > -PAWN_VALUE*3>>1 && val < PAWN_VALUE*3>>1) val1 = -PAWN_VALUE*3>>2;
 						else val1 = 2 * PAWN_VALUE;
 						++Nodes;
 					}
-					else if (delay);
+					else if (delay!=0);
 
 					else if (a == beta - 1) {
-						val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, false);
+						val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r,other_in_check, realdepth - 1);
 						//						if (new_depth!=d-1 && val1 > a) {
 						//							delay = false;
 						//							new_depth = d - 1;
-						//							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to]);
+						//							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to],other_in_check,realdepth-1);
 						//						}
 					}
 					else if (a == -INF && beta == INF //|| (d>0 && CounterMove(false, last_move).get().empty())
 						) {
-						//							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, true, true, r,true);
+						//							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, true, true, r,other_in_check,realdepth-1);
 						///*
 #define ASPIRATION_WINDOW
 #ifdef ASPIRATION_WINDOW
@@ -6100,13 +6293,13 @@ int NumberOfFailHighMoves = 0;
 						int low = firstguess - inc;
 						int high = firstguess + inc;
 
-						val1 = -NegaScout(-high, -low, new_depth, false, somewhere_in_null, false, false, r, true);
+						val1 = -NegaScout(-high, -low, new_depth, false, somewhere_in_null, false, false, r, other_in_check, realdepth - 1);
 						if (val1 < low) {
 							do {
 								//inc <<= 1;
 								low = val1 - inc;
 								inc = inc + (inc >> 1);
-								int val2 = -NegaScout(-val1, -low, new_depth, false, somewhere_in_null, true, false, r, true);
+								int val2 = -NegaScout(-val1, -low, new_depth, false, somewhere_in_null, true, false, r, other_in_check, realdepth - 1);
 								if (val2 > val1) {
 									//									 inc = (inc<<1)+val2-val1;
 									val1 = val2;
@@ -6122,7 +6315,7 @@ int NumberOfFailHighMoves = 0;
 								//								inc <<= 1;
 								high = val1 + inc;
 								inc = inc + (inc >> 1);
-								int val2 = -NegaScout(-high, -val1, new_depth, false, somewhere_in_null, false, true, r, true);
+								int val2 = -NegaScout(-high, -val1, new_depth, false, somewhere_in_null, false, true, r, other_in_check, realdepth - 1);
 								if (val2 < val1) {
 									//									inc = (inc << 1) + val1 - val2;
 									val1 = val2;
@@ -6138,11 +6331,11 @@ int NumberOfFailHighMoves = 0;
 						int low = firstguess - inc;
 						int high = firstguess + inc;
 						bool afound = false;
-						val1 = -NegaScout(-high, -low, new_depth, false, somewhere_in_null, false, false, r, true);
+						val1 = -NegaScout(-high, -low, new_depth, false, somewhere_in_null, false, false, r, other_in_check, realdepth - 1);
 						if (val1 < low) {
 							//inc <<= 1;
 							low = val1 - 64;
-							int val2 = -NegaScout(-val1, -low, new_depth, false, somewhere_in_null, true, false, r, true);
+							int val2 = -NegaScout(-val1, -low, new_depth, false, somewhere_in_null, true, false, r, other_in_check, realdepth - 1);
 
 							if (val2 > val1) {
 							}
@@ -6153,7 +6346,7 @@ int NumberOfFailHighMoves = 0;
 						}
 						else if (val1 >= high) {
 							high = val1 + 32;
-							int val2 = -NegaScout(-high, -val1, new_depth, false, somewhere_in_null, false, true, r, true);
+							int val2 = -NegaScout(-high, -val1, new_depth, false, somewhere_in_null, false, true, r, other_in_check, realdepth - 1);
 							if (val2 < val1) {
 							}
 							else {
@@ -6162,51 +6355,51 @@ int NumberOfFailHighMoves = 0;
 							val1 = val2;
 						}
 						if (!afound) {
-							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, true, true, r, true);
+							val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, true, true, r, other_in_check, other_in_check, realdepth - 1);
 						}
 #endif
 						//*/
 						/*
-												val1 = -NegaScout(-(firstguess+1), -firstguess, new_depth, false, somewhere_in_null, false, false, r);
-												if (val1<firstguess) {
-													do {
-														firstguess = __min(val1,firstguess);
-														val1 = -NegaScout(-(firstguess + 1), -firstguess, new_depth, false, somewhere_in_null, false, false, r);
-													} while (val1 < firstguess);
-												}
-												else {
-													do {
-														firstguess = __max(val1,firstguess);
-														val1 = -NegaScout(-(firstguess + 1), -firstguess, new_depth, false, somewhere_in_null, false, false, r);
-													} while (val1 >= firstguess);
-												}
+						val1 = -NegaScout(-(firstguess+1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
+						if (val1<firstguess) {
+						do {
+						firstguess = __min(val1,firstguess);
+						val1 = -NegaScout(-(firstguess + 1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
+						} while (val1 < firstguess);
+						}
+						else {
+						do {
+						firstguess = __max(val1,firstguess);
+						val1 = -NegaScout(-(firstguess + 1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
+						} while (val1 >= firstguess);
+						}
 						*/
 					}
 					else {
 						if (a == -INF) {
-							val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, beta_real, false, r, false);
+							val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, beta_real, false, r, other_in_check, realdepth - 1);
 							//							if (new_depth != d - 1 && val1 > a) {
 							//								delay = false;
 							//								new_depth = d - 1;
-							//								val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, Board[c.to]);
+							//								val1 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, Board[c.to],other_in_check,realdepth-1);
 							//							}
 							if (val1 < beta) {
-								val1 = -NegaScout(-val1, -a, new_depth, false, somewhere_in_null, true, alpha_real, r, false);
+								val1 = -NegaScout(-val1, -a, new_depth, false, somewhere_in_null, true, alpha_real, r, other_in_check, realdepth - 1);
 								//								int low, inc = 16;
 								//								do {
 								//									low = val1 - inc;
 								//									inc = inc +(inc>> 1);
-								//									val1 = -NegaScout(-val1, -low, new_depth, false, somewhere_in_null, true, false, r);
+								//									val1 = -NegaScout(-val1, -low, new_depth, false, somewhere_in_null, true, false, r,other_in_check,realdepth-1);
 								//								} while (val1 < low);
 							}
 						}
 						else if (beta == INF) {
 #ifdef ASPIRATION_WINDOW
-							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, alpha_real, r, false);
+							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, alpha_real, r, other_in_check, realdepth - 1);
 							if (val1 >= a) {
 								int inc = 16;
 								do {
-									int val2 = -NegaScout(-(val1 + inc), -val1, new_depth, false, somewhere_in_null, false, true, r, true);
+									int val2 = -NegaScout(-(val1 + inc), -val1, new_depth, false, somewhere_in_null, false, true, r, other_in_check, realdepth - 1);
 									inc += inc >> 1;
 									if (val2 < val1) {
 										//										inc = (inc<<1)+(val2-val1);
@@ -6221,14 +6414,14 @@ int NumberOfFailHighMoves = 0;
 									val1 = val2;
 								} while (true);
 								//								if (abs(val2 - val1) < PAWN_VALUE) val1 = (val1 + val2) >> 1;
-								//								else val1 = -NegaScout(-val2, -val1, new_depth, false, somewhere_in_null, true, false, r);
+								//								else val1 = -NegaScout(-val2, -val1, new_depth, false, somewhere_in_null, true, false, r,other_in_check,realdepth-1);
 							}
 #else
-							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, alpha_real, r, false);
+							val1 = -NegaScout(-(a + 1), -a, new_depth, false, somewhere_in_null, false, alpha_real, r, other_in_check, realdepth - 1);
 							bool afound = false;
 							if (val1 >= a) {
 								int inc = 32;
-								int val2 = -NegaScout(-(val1 + inc), -val1, new_depth, false, somewhere_in_null, false, true, r, true);
+								int val2 = -NegaScout(-(val1 + inc), -val1, new_depth, false, somewhere_in_null, false, true, r, other_in_check, realdepth - 1);
 								//inc += inc >> 1;
 								if (val2 < val1) {
 									val1 = a;
@@ -6240,28 +6433,28 @@ int NumberOfFailHighMoves = 0;
 								}
 								val1 = val2;
 								if (!afound) {
-									val2 = -NegaScout(-beta, -val1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, true);
-									if (val2 < val1) val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, true);
+									val2 = -NegaScout(-beta, -val1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
+									if (val2 < val1) val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
 									else val1 = val2;
 								}
 							}
 #endif
 						}
 						else {
-//#define BINARY_SCOUT
+							//#define BINARY_SCOUT
 #ifdef BINARY_SCOUT
 							int val2;
-							val1 = -NegaScout(-(a + 1), -(a), new_depth, false, somewhere_in_null, false, alpha_real, r, false);
+							val1 = -NegaScout(-(a + 1), -(a), new_depth, false, somewhere_in_null, false, alpha_real, r, other_in_check, realdepth - 1);
 							if (val1 < beta && val1 >= a) {
-								val2 = -NegaScout(-beta, -beta+1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, false);
+								val2 = -NegaScout(-beta, -beta + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
 								int count = 0;
 								while (abs(val1 - val2)>20) {
 									if (++count > 0) {
-										val1 = val2 = -NegaScout(-val2, -val1 + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, true);
+										val1 = val2 = -NegaScout(-val2, -val1 + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
 										break;
 									}
 									int between = (val1 + val2) >> 1;
-									int m = -NegaScout(-between, -between + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, false);
+									int m = -NegaScout(-between, -between + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
 									if (m <= val1) break;
 									if (m >= val2) {
 										val1 = val2;
@@ -6275,15 +6468,15 @@ int NumberOfFailHighMoves = 0;
 									}
 								}
 								val1 = (val1 + val2) >> 1;
-//								if (val2 < val1) val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, true);
-//								else val1 = val2;
+								//								if (val2 < val1) val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r);
+								//								else val1 = val2;
 							}
 #else
 							int val2;
-							val1 = -NegaScout(-(a + 1), -(a), new_depth, false, somewhere_in_null, false, alpha_real, r, false);
+							val1 = -NegaScout(-(a + 1), -(a), new_depth, false, somewhere_in_null, false, alpha_real, r, other_in_check, realdepth - 1);
 							if (val1 < beta && val1 >= a) {
-								val2 = -NegaScout(-beta, -val1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, true);
-								if (val2 < val1) val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, true);
+								val2 = -NegaScout(-beta, -val1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
+								if (val2 < val1) val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
 								else val1 = val2;
 							}
 #endif
@@ -6312,7 +6505,41 @@ int NumberOfFailHighMoves = 0;
 					a = g;
 					alpha_real = true;
 				}
+				InIID = wasIID;
 				c.unmake();
+			}
+			if (move_count == 1 && g < beta && CurrentPly+realdepth<MAX_MOVES+QUIESCENT_DEPTH+1) {
+				c.make();
+				int val1;
+				try{
+					int val2;
+					val1 = -NegaScout(-(a + 1), -(a), last_depth+1, false, somewhere_in_null, false, alpha_real, r, other_in_check, realdepth);
+					if (val1 < beta && val1 >= a) {
+						val2 = -NegaScout(-beta, -val1, last_depth + 1, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth);
+						if (val2 < val1) val1 = -NegaScout(-beta, -a, last_depth + 1, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth);
+						else val1 = val2;
+					}
+				}
+				catch (OutOfTimeException)
+				{
+					c.unmake();
+					MovesIID.dec_ply();
+					dec_ply();
+					moves.clean_up();
+					throw OutOfTime;
+				}
+				c.unmake();
+				if (val1 > g) {
+					second_best_value = g;
+					g = val1;
+					best_move = c;
+					//best_value = move_value;
+					best_move_type = move_type;
+					if (CurrentPly == 1) Ply0Move = c;
+				}
+				if (g > a) {
+					a = g;
+				}
 			}
 		}
 		moves.clean_up();
@@ -6320,25 +6547,27 @@ int NumberOfFailHighMoves = 0;
 
 		if (g >= beta) {
 			if (num_moves) ++FailHighCount;
-			FailHighTotal+=num_moves;
+			FailHighTotal += num_moves;
 
 			++NumFailHighNodes;
 			if (move_count == 1) ++NumberOnFirstMove;
 		}
 
 		/*		if (//(g >= beta || d<=0) &&
-					!best_move.empty() //&& (best_move.slot_taken == NO_SLOT  || d<=0)
-					&& !last_move.empty()
-					//&& d>0
-					) {
-					CounterMove(d<=0,last_move).set(best_move);
-				}
+		!best_move.empty() //&& (best_move.slot_taken == NO_SLOT  || d<=0)
+		&& !last_move.empty()
+		//&& d>0
+		) {
+		CounterMove(d<=0,last_move).set(best_move);
+		}
 		*/
 #ifdef HISTORY_HEURISTIC
+		//if (!best_move.empty()) GetHH(d <= 0, RelativeMove(best_move)).set(d + QUIESCENT_DEPTH + 1, (g >= beta ? 4 : 1));
+		if (g>=beta && !best_move.empty()) GetHH(d <= 0, RelativeMove(best_move)).set(d + QUIESCENT_DEPTH + 1, 4);
 
-		if (!best_move.empty()) GetHH(d <= 0, RelativeMove(best_move)).set((d + QUIESCENT_DEPTH + 1) << (g >= beta ?
-			2//(beta_real ? 2 : 1) 
-			: 0));
+		//		if (!best_move.empty()) GetHH(d <= 0, RelativeMove(best_move)).set((d + QUIESCENT_DEPTH + 1) << (g >= beta ?
+		//			2//(beta_real ? 2 : 1) 
+		//			: 0));
 #endif
 
 #ifdef KILLERS
@@ -6353,22 +6582,22 @@ int NumberOfFailHighMoves = 0;
 #ifndef IGNORE_TT
 
 		if (n != nullptr && !(n->key == Hash)) {
-			if (alpha != beta-1) n = GetOrMakeHash(d <= 0);
+			if (alpha != beta - 1) n = GetOrMakeHash(d <= 0);
 			else n = nullptr;
 		}
 #endif
 		if (n != nullptr && !best_move.empty()) {
-//			if (!(Hash == n->key)) n = nullptr;
-//			else 
-				n->set_move(best_move,d);
+			//			if (!(Hash == n->key)) n = nullptr;
+			//			else 
+			n->set_move(best_move, d);
 		}
 		if (g == -INF) {
 #ifdef SIMPLE_EVAL
-			if (d < 1) return (n == nullptr?  simple_eval() : n->get_eval(true));
+			if (d < 1) return (n == nullptr ? simple_eval() : n->get_eval(true));
 #else
 			if (d < 1) return (n == nullptr ? (ninpv ? simple_eval() : eval()) : n->get_eval(alpha == beta - 1));
 #endif
-			if (in_check) return -KING_VALUE-d-QUIESCENT_DEPTH;//includes waiting penalty
+			if (in_check) return -KING_VALUE - d - QUIESCENT_DEPTH;//includes waiting penalty
 			return 0;
 		}
 	}
@@ -6379,7 +6608,7 @@ int NumberOfFailHighMoves = 0;
 		/* Traditional transposition table storing of bounds */
 		/* Fail high result implies a lower bound */
 		//n->singular = false;
-		if (g >= beta) { 
+		if (g >= beta) {
 			//if (beta_real)
 			{
 				n->set_lower(d, g);
@@ -6397,17 +6626,17 @@ int NumberOfFailHighMoves = 0;
 		/* Found an accurate minimax value - will not occur if called with zero window */
 		else {
 			//if(alpha_real) 
-				n->set_lower(d, g);
+			n->set_lower(d, g);
 			//if (beta_real) 
-				n->set_upper(d, g);
+			n->set_upper(d, g);
 			//if (alpha_real && beta_real) 
-				n->upper_exact = n->lower_exact =
+			n->upper_exact = n->lower_exact =
 #ifdef SIMPLE_EVAL
-					true;
+				true;
 #else
-					!ninpv;
+				!ninpv;
 #endif
-		//	if (g - second_best_value >= PAWN_VALUE >> 1)n->singular = true;
+			//	if (g - second_best_value >= PAWN_VALUE >> 1)n->singular = true;
 		}
 	}
 	return g;
@@ -6417,17 +6646,18 @@ int NumberOfFailHighMoves = 0;
 int MTDF(int g, int d)
 {
 	InIID = false;
-	return NegaScout(-INF,INF,d,false,false,true,true,RelativeMove(),true);
+	const bool other_in_check = king_in_check(PlySide());
+	return NegaScout(-INF, INF, d, false, false, true, true, RelativeMove(), other_in_check,d+1);
 	int upperbound = INF;
 	int lowerbound = -INF;
 	do {
 		int beta;
 		if (g == lowerbound) beta = g + 1; else beta = g;
 		assert(CurrentPly == 0);
-		g = NegaScout(beta - 1, beta, d,false,false,false,false,RelativeMove(),false);
+		g = NegaScout(beta - 1, beta, d, false, false, false, false, RelativeMove(), other_in_check,d);
 		assert(CurrentPly == 0);
 		if (g < beta) upperbound = g; else lowerbound = g;
-	}while(lowerbound < upperbound);
+	} while (lowerbound < upperbound);
 	return g;
 }
 
@@ -6447,14 +6677,14 @@ bool add_time()
 			TimeIncBy += MaxTime;
 			StopTime += MaxTime;
 			TimeExtended = true;
-//			printf("-t");
+			//			printf("-t");
 		}
 		else return false;
 	}
 	else {
 		DepthIncBy += 1;
 		MaxDepth += 1;
-//		printf("-d");
+		//		printf("-d");
 	}
 	++TimeExtendCounter;
 	return true;
@@ -6474,7 +6704,7 @@ void restore_time()
 bool test_extend_time(int x)
 {
 	return false;
-	if (x < PAWN_VALUE -(PAWN_VALUE >> 2) &&  first_guess() - x >= PAWN_VALUE - (PAWN_VALUE >> 2)) {
+	if (x < PAWN_VALUE - (PAWN_VALUE >> 2) && first_guess() - x >= PAWN_VALUE - (PAWN_VALUE >> 2)) {
 		int limit;
 		if (x >= ROOK_VALUE - (PAWN_VALUE >> 2)) limit = 20;
 		else if (x > KNIGHT_VALUE - (PAWN_VALUE >> 2)) limit = 15;
@@ -6494,26 +6724,26 @@ void endgame_check()
 	if (SideInEndgame(LIGHT) && SideInEndgame(DARK)) {
 		CheckForEndgame = false;
 		EndGamePoint = history_len; //for takeback
-		ClearHash += MAX_MOVES;
+		ClearHash += MAX_MOVES * 2;
 	}
 }
 
 void think(int output)
 {
-	NumFailHighNodes=0;
-	NumberOnFirstMove=0;
+	NumFailHighNodes = 0;
+	NumberOnFirstMove = 0;
 
 	USE_TT = true;
 	EphemeralValue = 0;
 	TimeExtended = false;
 	int i, j, x;
-	for (i = 0;i < MAX_PLY-2;++i) {
+	for (i = 0;i < MAX_PLY - 2;++i) {
 		for (j = 0;j < 4; ++j) {
 			//			CaptureKillers.BestMovePerPly[j][i].clear();
-			BestMovePerPly[j][i] = BestMovePerPly[j][i+2];
+			BestMovePerPly[j][i] = BestMovePerPly[j][i + 2];
 		}
 		//		CaptureKillers.BestMovePerPlyIndex[i] = 0;
-		BestMovePerPlyIndex[i] = BestMovePerPlyIndex[i+2];
+		BestMovePerPlyIndex[i] = BestMovePerPlyIndex[i + 2];
 	}
 	for (;i < MAX_PLY;++i) {
 		for (j = 0;j < 4; ++j) {
@@ -6525,13 +6755,13 @@ void think(int output)
 	}
 	Ply0Move.clear();
 
-/*
+	/*
 	if (!DisableBook && book_move()) {
-		pv[0][0] = MovesOrdered.back();
-		MovesOrdered.clear();
-		return;
+	pv[0][0] = MovesOrdered.back();
+	MovesOrdered.clear();
+	return;
 	}
-*/
+	*/
 	endgame_check();
 
 	TimedOut = false;
@@ -6613,11 +6843,11 @@ void think(int output)
 			printf("%3d  %9d  %7d  %5d %f nps ", i, Nodes, (pv[0].from / 10 - 2) * 8 + (pv[0].from % 10 - 1), y * 20, Nodes*1000.0 / (end_time - StartTime));   // @ED
 		else if (output == 2) {
 			printf("%d %d %d %d %.4g %.2g %.2g %.2g",
-				MinDepth, x, (end_time - StartTime) / 10, Nodes, (double)FailHighTotal /FailHighCount,
+				MinDepth, x, (end_time - StartTime) / 10, Nodes, (double)FailHighTotal / FailHighCount,
 
-				(double)Nodes / MidNodes, (double)NCNodes / NCMidNodes, failhigh/numfailhigh
-		);
-			LOG(Log << "depth:"<<MinDepth<<" score" <<x<<" time:"<<(end_time - StartTime) / 10<<" Nodes:"<< Nodes<<" median branching factor quiescent:" <<(double)Nodes / MidNodes<<" median branching factor:"<<(double)NCNodes / NCMidNodes<<" fail high on first:"<< (double)NumberOnFirstMove / NumFailHighNodes)<<endl;
+				(double)Nodes / MidNodes, (double)NCNodes / NCMidNodes, failhigh / numfailhigh
+			);
+			LOG(Log << "depth:" << MinDepth << " score" << x << " time:" << (end_time - StartTime) / 10 << " Nodes:" << Nodes << " median branching factor quiescent:" << (double)Nodes / MidNodes << " median branching factor:" << (double)NCNodes / NCMidNodes << " fail high on first:" << (double)NumberOnFirstMove / NumFailHighNodes) << endl;
 		}
 		if (output) {
 			for (j = 0; j < pv_length; ++j) {
@@ -6688,7 +6918,7 @@ void xboard()
 	int m;
 	int post = 0;
 
-	control_period = 0; time_base_min = 0; time_base_sec = 0; time_inc = 0; time_base = 0; clock = 0, exact_time=0;
+	control_period = 0; time_base_min = 0; time_base_sec = 0; time_inc = 0; time_base = 0; clock = 0, exact_time = 0;
 
 	printf("\n");
 	init_board();
@@ -6701,63 +6931,64 @@ void xboard()
 			if (MaxDepth != MAX_PLY) {
 				LOG(Log << "using depth " << MaxDepth << endl;);
 				MaxTime = 1 << 25;
-			} else
-			if (exact_time != 0) {
-				LOG(Log<<"using exact time " << exact_time << endl);
-				MaxTime = exact_time;
 			}
-			else {
-				if (control_period != 0) {
-					LOG(Log << "control_period "<< control_period<<" clock "<<clock<<" time_inc "<<time_inc<<endl);
-					//MaxTime = (clock- SAFETY_MARGIN) / (abs(control_period)*3>>1);
-					MaxTime = (clock - CLOCK_SAFETY_MARGIN)/ (abs(control_period));
-					if (MaxTime <= 0) {
-						if (time_inc > 0) MaxTime = 0;
-						else MaxTime = clock / (abs(control_period) + 1);
-					}
-					clock -= MaxTime;
-					if (clock <= SAFETY_MARGIN) {
-						if (time_inc > SAFETY_MARGIN) MaxTime += time_inc - SAFETY_MARGIN;
-						else MaxTime += 7*time_inc>>3;
-					}
-					else if (time_inc > SAFETY_MARGIN)
-						MaxTime += time_inc - SAFETY_MARGIN;
-					else MaxTime += 7*time_inc>>3;
-					if (control_period > 0) {
-						--control_period;
-						if (control_period == 0) control_period = control_period_original;
-					}
-					else {
-						if (control_period < -30) ++control_period;
-					}
+			else
+				if (exact_time != 0) {
+					LOG(Log << "using exact time " << exact_time << endl);
+					MaxTime = exact_time;
 				}
 				else {
-					LOG(Log <<"clock " << clock << " time_inc " << time_inc << endl);
-					MaxTime = (clock-SAFETY_MARGIN) / 25;
-					clock -= MaxTime;
-					if (clock <= SAFETY_MARGIN) {
-						if (time_inc > SAFETY_MARGIN) MaxTime += time_inc - SAFETY_MARGIN;
-						else MaxTime += (time_inc >> 1);
+					if (control_period != 0) {
+						LOG(Log << "control_period " << control_period << " clock " << clock << " time_inc " << time_inc << endl);
+						//MaxTime = (clock- SAFETY_MARGIN) / (abs(control_period)*3>>1);
+						MaxTime = (clock - CLOCK_SAFETY_MARGIN) / (abs(control_period));
+						if (MaxTime <= 0) {
+							if (time_inc > 0) MaxTime = 0;
+							else MaxTime = clock / (abs(control_period) + 1);
+						}
+						clock -= MaxTime;
+						if (clock <= SAFETY_MARGIN) {
+							if (time_inc > SAFETY_MARGIN) MaxTime += time_inc - SAFETY_MARGIN;
+							else MaxTime += 7 * time_inc >> 3;
+						}
+						else if (time_inc > SAFETY_MARGIN)
+							MaxTime += time_inc - SAFETY_MARGIN;
+						else MaxTime += 7 * time_inc >> 3;
+						if (control_period > 0) {
+							--control_period;
+							if (control_period == 0) control_period = control_period_original;
+						}
+						else {
+							if (control_period < -30) ++control_period;
+						}
 					}
-					else MaxTime += time_inc;
+					else {
+						LOG(Log << "clock " << clock << " time_inc " << time_inc << endl);
+						MaxTime = (clock - SAFETY_MARGIN) / 25;
+						clock -= MaxTime;
+						if (clock <= SAFETY_MARGIN) {
+							if (time_inc > SAFETY_MARGIN) MaxTime += time_inc - SAFETY_MARGIN;
+							else MaxTime += (time_inc >> 1);
+						}
+						else MaxTime += time_inc;
+					}
 				}
-			}
-			LOG(Log<<"MaxTime "<<MaxTime<<endl);
-			think(post);
-			if (pv[0].empty()) {
-				//				set_side(other_color(PlySide()));//??
-				//				print_result();
-				computer_side = NO_COLOR;
-				continue;
-			}
-			printf("move %s\n", move_str(pv[0]));
-			set_side(other_color(PlySide()));//??
-			pv[0].make();
-			History[history_len++] = pv[0];
+				LOG(Log << "MaxTime " << MaxTime << endl);
+				think(post);
+				if (pv[0].empty()) {
+					//				set_side(other_color(PlySide()));//??
+					//				print_result();
+					computer_side = NO_COLOR;
+					continue;
+				}
+				printf("move %s\n", move_str(pv[0]));
+				set_side(other_color(PlySide()));//??
+				pv[0].make();
+				History[history_len++] = pv[0];
 
-//			print_result();
-			log_board();
-			continue;
+				//			print_result();
+				log_board();
+				continue;
 		}
 		if (!gets(line, 256))
 			return;
@@ -6790,7 +7021,7 @@ void xboard()
 		}
 		char extra[256];
 		if (!strcmp(command, "level")) {
-			int read=sscanf(line, "level %d %d:%d %d",&control_period,&time_base_min,&time_base_sec,&time_inc);
+			int read = sscanf(line, "level %d %d:%d %d", &control_period, &time_base_min, &time_base_sec, &time_inc);
 			control_period_original = control_period;
 			LOG(Log << "read " << read << endl);
 			if (read < 4) {
@@ -6798,8 +7029,8 @@ void xboard()
 				time_base_sec = 0;
 				sscanf(line, "level %d %d %d", &control_period, &time_base_min, &time_inc);
 			}
-			LOG(Log<<"control_period "<< control_period<<" time_base_min "<< time_base_min<<"time_base_sec"<<time_base_sec<<" extra "<< extra<<" time_inc "<< time_inc<<endl);
-			time_base = (time_base_min * 60 + time_base_sec)*1000;
+			LOG(Log << "control_period " << control_period << " time_base_min " << time_base_min << "time_base_sec" << time_base_sec << " extra " << extra << " time_inc " << time_inc << endl);
+			time_base = (time_base_min * 60 + time_base_sec) * 1000;
 			LOG(Log << " clock was " << clock << endl);
 			clock = time_base;
 			LOG(Log << " clock assumed to be " << clock << endl);
@@ -6834,16 +7065,16 @@ void xboard()
 			clock_temp *= 10;
 			if (roll_over_check) {
 				;			if (fabs((double)(clock_temp - clock) / roll_over_increment - 1.0) < .1 && fabs((double)(clock_temp - clock) / roll_over_increment - 1.0) < fabs((double)(clock_temp - clock) / time_inc - 1.0)) {
-					LOG(Log << "roll over assumed at "<<control_period<<endl);
+					LOG(Log << "roll over assumed at " << control_period << endl);
 					control_period = control_period_original;
 				}
 			}
 			clock = clock_temp;
-			LOG(Log<<" clock " << clock << endl);
+			LOG(Log << " clock " << clock << endl);
 			//MaxTime /= 30;
 			//MaxTime = MaxTime / 2;
 #ifndef DISABLE_TIME
-//			MaxDepth = 32;
+			//			MaxDepth = 32;
 #endif
 			continue;
 		}
@@ -6892,7 +7123,7 @@ void xboard()
 		else {
 			History[history_len++] = move;
 
-//			print_result();
+			//			print_result();
 			log_board();
 		}
 	}
@@ -6901,7 +7132,7 @@ void xboard()
 void print_result()
 {
 	return;
-	GenMoves(PlySide(),0,-20);
+	GenMoves(PlySide(), 0, -20);
 	while (!MovesOrdered.empty()) {
 		MovesOrdered.back().make();
 		if (king_in_check(PlySide())) {//illegal to make a move that leaves your king in check
@@ -6934,6 +7165,8 @@ void print_result()
 void test_init();
 char s[256];
 char s2[30];
+void test_params();
+
 int mainish()
 {
 	int computer_side;
@@ -6957,9 +7190,9 @@ int mainish()
 			print_board();
 			log_board();
 
-//			board_consistent();						  /* think about the move and make it */
-													  //			eval();
-													  //			piece_threats();
+			//			board_consistent();						  /* think about the move and make it */
+			//			eval();
+			//			piece_threats();
 			think(2);//1 for original format
 			if (pv[0].empty()) {
 				LOG(Log << "(no legal moves)\n");
@@ -6970,7 +7203,7 @@ int mainish()
 
 			printf("Computer's move: %s\n", move_str(pv[0]));
 			LOG(Log << "Computer's move: " << move_str(pv[0]) << (PlySide() == LIGHT ? " Light" : " Dark") << endl);
-//			board_consistent();
+			//			board_consistent();
 
 			set_side(other_color(PlySide()));//??
 			pv[0].make();
@@ -7001,6 +7234,19 @@ int mainish()
 			computer_side = NO_COLOR;
 			continue;
 		}
+		if (!strcmp(s2, "tune")) {
+			while (whitespace(*p))++p;
+			p2 = s2;
+			s2[0] = 0;
+			while (!whitespace(*p) && *p != 0)*p2++ = *p++;
+			*p2 = 0;
+			cout << HistoryParam << " " << HistoryNotBetaParam << endl;
+			sscanf(s2, "%lf,%lf", &HistoryParam, &HistoryNotBetaParam);
+			cout << "to:" << HistoryParam << " " << HistoryNotBetaParam << endl;
+			test_params();
+			continue;
+
+		}
 		if (!strcmp(s2, "st")) {
 			while (whitespace(*p))++p;
 			p2 = s2;
@@ -7012,7 +7258,7 @@ int mainish()
 #ifndef DISABLE_TIME
 			MaxDepth = MAX_PLY;
 #endif
-			printf("Time %d\n",MaxTime);
+			printf("Time %d\n", MaxTime);
 			continue;
 		}
 		if (!strcmp(s2, "sd")) {
@@ -7042,7 +7288,7 @@ int mainish()
 			continue;
 		}
 		if (!strcmp(s2, "perft")) {
-//			test_init();
+			//			test_init();
 			int depth;
 			while (whitespace(*p))++p;
 			p2 = s2;
@@ -7050,8 +7296,8 @@ int mainish()
 			while (!whitespace(*p) && *p != 0)*p2++ = *p++;
 			*p2 = 0;
 			sscanf(s2, "%d", &depth);
-			cout << "perft "<<depth<<" =" << perft(depth) << endl;
-			cout << "Checks = " << Checks << " Captures = " << CapturesC << " Checkmates = " << Checkmates <<" en passant = "<< Enpassants <<" Castles = "<< Castles <<endl;
+			cout << "perft " << depth << " =" << perft(depth) << endl;
+			cout << "Checks = " << Checks << " Captures = " << CapturesC << " Checkmates = " << Checkmates << " en passant = " << Enpassants << " Castles = " << Castles << endl;
 			continue;
 		}
 		if (!strcmp(s2, "d")) {
@@ -7143,7 +7389,7 @@ PieceSlotType next_fen_piece(char f)
 		Players.pieces[p] = PAWN;
 		return p;
 	case 'R':
-		find_fen_piece(p, ROOK1 + base, ROOK)|| find_fen_piece(p, ROOK2 + base, ROOK)|| find_fen_piece(p, next_pawn(c), ROOK);
+		find_fen_piece(p, ROOK1 + base, ROOK) || find_fen_piece(p, ROOK2 + base, ROOK) || find_fen_piece(p, next_pawn(c), ROOK);
 		return p;
 	case 'N':
 		find_fen_piece(p, KNIGHT1 + base, KNIGHT) || find_fen_piece(p, KNIGHT2 + base, KNIGHT) || find_fen_piece(p, next_pawn(c), KNIGHT);
@@ -7169,7 +7415,7 @@ void scan_fen(char *fen)
 {
 	init_fen();
 	Pos p = a8;
-	while(true) {
+	while (true) {
 		while (Board[p] == OFF_BOARD) ++p;
 		switch (*fen) {
 		case '1': case '2':case '3':case '4':case '5':case '6':case '7':case '8':
@@ -7179,13 +7425,13 @@ void scan_fen(char *fen)
 		case' ':
 			break;
 		default:
-			{
-				PieceSlotType s = next_fen_piece(*fen);
-				Board[p] = s;
-				Players.positions[s] = p;
-				add_value(LIGHT, s);
-				p = next_fen_pos(p);
-			}
+		{
+			PieceSlotType s = next_fen_piece(*fen);
+			Board[p] = s;
+			Players.positions[s] = p;
+			add_value(LIGHT, s);
+			p = next_fen_pos(p);
+		}
 		}
 		++fen;
 		if (p > h1) break;
@@ -7193,7 +7439,7 @@ void scan_fen(char *fen)
 	++fen;
 	if (*fen == 'b') set_side(DARK);
 	fen += 2;
-	while(true){
+	while (true) {
 		switch (*fen) {
 		case 'k':
 			Players.pieces[DARK_ROOK2] = ROOK_NOT_MOVED;
@@ -7226,7 +7472,8 @@ void scan_fen(char *fen)
 		Players.pieces[Board[p]] = PAWN_JUST_ADVANCED;
 		En_passant_history[MoveNumber + history_len] = p;
 		En_passant_colors_history[MoveNumber + history_len] = color(Board[p]);
-	}else En_passant_history[MoveNumber + history_len] = 0;
+	}
+	else En_passant_history[MoveNumber + history_len] = 0;
 }
 /*
 8  . . . . . . . K
@@ -7247,108 +7494,144 @@ int players_init[NUM_PIECE_SLOTS]
 {
 	4,0,0,0,4,4,0,4,0,0,0,7,0,0,0,2,0,0,4,0,0,0,0,0,0,0,0,0,9,0,0,3,
 };
+
+char * test_fens[] = {
+	"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
+	"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",
+	"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+	"r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+
+	"r1b3k1/6p1/P1n1pr1p/q1p5/1b1P4/2N2N2/PP1QBPPP/R3K2R b KQ - 0 1"
+	"2nq1nk1/5p1p/4p1pQ/pb1pP1NP/1p1P2P1/1P4N1/P4PB1/6K1 w - - 0 1",
+	"8/3r2p1/pp1Bp1p1/1kP5/1n2K3/6R1/1P3P2/8 w - - 0 1",
+	"b1R2nk1/5ppp/1p3n2/5N2/1b2p3/1P2BP2/q3BQPP/6K1 w - - 0 1"
+	"3rr1k1/pp3pbp/2bp1np1/q3p1B1/2B1P3/2N4P/PPPQ1PP1/3RR1K1 w - - 0 1"
+	"r1b1qrk1/1ppn1pb1/p2p1npp/3Pp3/2P1P2B/2N5/PP1NBPPP/R2Q1RK1 b - - 0 1",
+	"2R1r3/5k2/pBP1n2p/6p1/8/5P1P/2P3P1/7K w - - 0 1",
+	"2r2rk1/1p1R1pp1/p3p2p/8/4B3/3QB1P1/q1P3KP/8 w - - 0 1",
+	"r1bq1rk1/p4ppp/1pnp1n2/2p5/2PPpP2/1NP1P3/P3B1PP/R1BQ1RK1 b - - 0 1",
+
+	"r3qb1k/1b4p1/p2pr2N/3n4/Pn2N3/2p3RP/1B3PP1/1B1QR1K1 w - - 0 27",
+	nullptr
+};
+
+void test_params()
+{
+	long long total = 0;
+	for (int i = 0;test_fens[i] != nullptr;++i) {
+		scan_fen(test_fens[i]);
+		//		print_board();
+		//		log_board();
+		cout << "board " << i << endl;
+		think(2);
+		total += Nodes;
+	}
+	Log << "total=" << log((double)total) << endl;
+	cout << "total=" << log((double)total) << endl;
+}
+
 void test_init()
 {
 	init_board();
 	//Position2 
-//	scan_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
+	//	scan_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
 	//position 3
 	//scan_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
 	//pos 5
-//	scan_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
-//pos 4
-//	scan_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+	//	scan_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
+	//pos 4
+	//	scan_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
 	//test pos 1
-//	scan_fen("r1b3k1/6p1/P1n1pr1p/q1p5/1b1P4/2N2N2/PP1QBPPP/R3K2R b KQ - 0 1");
+	//	scan_fen("r1b3k1/6p1/P1n1pr1p/q1p5/1b1P4/2N2N2/PP1QBPPP/R3K2R b KQ - 0 1");
 	/*    Rxf3    2600
-    cxd4    1900 y
-    Nxd4    1900 x
-    Bd7     1600
-    Bxa6    1500
-    Bxc3    1400 *
-    Rg6     1400
-    e5      1200
- 
-*/
-	scan_fen("2nq1nk1/5p1p/4p1pQ/pb1pP1NP/1p1P2P1/1P4N1/P4PB1/6K1 w - - 0 1");
-/*  Be4     2600
-    Nxh7    1950
-    hxg6    1900 *y
-    Bf1     1400 x
-    f4      1400
-    Bxd5    1200
- 
-*/
-//	scan_fen("8/3r2p1/pp1Bp1p1/1kP5/1n2K3/6R1/1P3P2/8 w - - 0 1");
-/*   c6      2500
-    Rg6     2000
-    Ke5     1900 xy
-    Rg5     1700
-    Kd4     1200
-Be5     1200
- 
-*/
-// 1985 - 1805 - 1855
-//	scan_fen("8/4kb1p/2p3pP/1pP1P1P1/1P3K2/1B6/8/8 w - - 0 1");
-/*   e6      2500 xy
-    Bd1     1800
-    Bc2     1700
-    Bxf7    1600*/
-//scan_fen("b1R2nk1/5ppp/1p3n2/5N2/1b2p3/1P2BP2/q3BQPP/6K1 w - - 0 1");
-/*  Bc5     2500
-    Nh6     2100
-    Bh6     1900
-    Qg3     1750 xy
-    Bxb6    1750
-    Nxg7    1500
-    Bc4     1400
-    Rxf8    1200
-    Qh4     1200*/
-//scan_fen("3rr1k1/pp3pbp/2bp1np1/q3p1B1/2B1P3/2N4P/PPPQ1PP1/3RR1K1 w - - 0 1");
-/*  Bxf6    2500 xy
-    Bb5     1900
-    Nd5     1700
-    f4      1700
-    a3      1200
-    Re3     1200*/
-//scan_fen("r1b1qrk1/1ppn1pb1/p2p1npp/3Pp3/2P1P2B/2N5/PP1NBPPP/R2Q1RK1 b - - 0 1");
-/*  Nh7     2500
-    Nxe4    1800
-    g5      1700
-    a5      1700
-    Kh7     1500
-	xy 
+	cxd4    1900 y
+	Nxd4    1900 x
+	Bd7     1600
+	Bxa6    1500
+	Bxc3    1400 *
+	Rg6     1400
+	e5      1200
+
 	*/
-//scan_fen("2R1r3/5k2/pBP1n2p/6p1/8/5P1P/2P3P1/7K w - - 0 1");
-/* Bd8     2500 x
-    Rxe8    1600 y
+	//	scan_fen("2nq1nk1/5p1p/4p1pQ/pb1pP1NP/1p1P2P1/1P4N1/P4PB1/6K1 w - - 0 1");
+	/*  Be4     2600
+	Nxh7    1950
+	hxg6    1900 *y
+	Bf1     1400 x
+	f4      1400
+	Bxd5    1200
+
 	*/
-//	scan_fen("2r2rk1/1p1R1pp1/p3p2p/8/4B3/3QB1P1/q1P3KP/8 w - - 0 1");
-/*   Bd4     2500 y
-    Bg6     1800
-    Bh7     1800
-    Bxh6    1700
-    Rxb7    1400
+	//	scan_fen("8/3r2p1/pp1Bp1p1/1kP5/1n2K3/6R1/1P3P2/8 w - - 0 1");
+	/*   c6      2500
+	Rg6     2000
+	Ke5     1900 xy
+	Rg5     1700
+	Kd4     1200
+	Be5     1200
+
+	*/
+	// 1985 - 1805 - 1855
+	//	scan_fen("8/4kb1p/2p3pP/1pP1P1P1/1P3K2/1B6/8/8 w - - 0 1");
+	/*   e6      2500 xy
+	Bd1     1800
+	Bc2     1700
+	Bxf7    1600*/
+	scan_fen("b1R2nk1/5ppp/1p3n2/5N2/1b2p3/1P2BP2/q3BQPP/6K1 w - - 0 1");
+	/*  Bc5     2500
+	Nh6     2100
+	Bh6     1900
+	Qg3     1750 xy
+	Bxb6    1750
+	Nxg7    1500
+	Bc4     1400
+	Rxf8    1200
+	Qh4     1200*/
+	//scan_fen("3rr1k1/pp3pbp/2bp1np1/q3p1B1/2B1P3/2N4P/PPPQ1PP1/3RR1K1 w - - 0 1");
+	/*  Bxf6    2500 xy
+	Bb5     1900
+	Nd5     1700
+	f4      1700
+	a3      1200
+	Re3     1200*/
+	//scan_fen("r1b1qrk1/1ppn1pb1/p2p1npp/3Pp3/2P1P2B/2N5/PP1NBPPP/R2Q1RK1 b - - 0 1");
+	/*  Nh7     2500
+	Nxe4    1800
+	g5      1700
+	a5      1700
+	Kh7     1500
+	xy
+	*/
+	//scan_fen("2R1r3/5k2/pBP1n2p/6p1/8/5P1P/2P3P1/7K w - - 0 1");
+	/* Bd8     2500 x
+	Rxe8    1600 y
+	*/
+	//	scan_fen("2r2rk1/1p1R1pp1/p3p2p/8/4B3/3QB1P1/q1P3KP/8 w - - 0 1");
+	/*   Bd4     2500 y
+	Bg6     1800
+	Bh7     1800
+	Bxh6    1700
+	Rxb7    1400
 	x
 	*/
-//	scan_fen("r1bq1rk1/p4ppp/1pnp1n2/2p5/2PPpP2/1NP1P3/P3B1PP/R1BQ1RK1 b - - 0 1");
+	//	scan_fen("r1bq1rk1/p4ppp/1pnp1n2/2p5/2PPpP2/1NP1P3/P3B1PP/R1BQ1RK1 b - - 0 1");
 	/*    Qd7     2600
-    Ne8     2000
-    h5      1800
-    Ba6     1800
-    a5      1800
-    cxd4    1600 x
-    d5      1500
-    Re8     1400
-	y 
+	Ne8     2000
+	h5      1800
+	Ba6     1800
+	a5      1800
+	cxd4    1600 x
+	d5      1500
+	Re8     1400
+	y
 	*/
 	//	scan_fen("r3qb1k/1b4p1/p2pr2N/3n4/Pn2N3/2p3RP/1B3PP1/1B1QR1K1 w - - 0 27");
 	//	for (int i = 0;i < NUM_PIECE_SLOTS;++i) Players.pieces[i] = (PieceType)players_init[i];
-//	for (int i = 0;i < BOARD_SIZE;++i) {
-//		Board[i] = (PieceSlotType)board_init[i];
-//		if (Board[i] != NO_SLOT) Players.positions[Board[i]] = (Pos)i;
-//	}
-//	set_side(LIGHT);
+	//	for (int i = 0;i < BOARD_SIZE;++i) {
+	//		Board[i] = (PieceSlotType)board_init[i];
+	//		if (Board[i] != NO_SLOT) Players.positions[Board[i]] = (Pos)i;
+	//	}
+	//	set_side(LIGHT);
 	endgame_check();
 	DisableBook = true;
 	FakeLen = 51;
@@ -7363,6 +7646,6 @@ int main()
 	init_board();
 	mainish();
 	close_log();
-    return 0;
+	return 0;
 }
 
