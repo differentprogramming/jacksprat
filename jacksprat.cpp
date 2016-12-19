@@ -2303,7 +2303,7 @@ void simple_calc()
 	else PawnsValue = EvalTemp[DARK] - EvalTemp[LIGHT];
 }
 
-#define CALC_PAWN_SCALE 1
+#define CALC_PAWN_SCALE 10
 
 void calc_pawns()
 {
@@ -4145,7 +4145,7 @@ int count_null_moves(const Colors c, const Pos root_pos)
 }
 
 #define QUEEN_COUNT 1
-#define KNIGHT_COUNT 5
+#define KNIGHT_COUNT 15
 #define ROOK_HOR_COUNT 2
 #define ROOK_VIR_COUNT 7
 #define BISHOP_COUNT 3
@@ -4161,7 +4161,7 @@ int count_queen_moves(const Colors c, const Pos root_pos)
 	CSLIDE(9, QUEEN_COUNT);
 	CSLIDE(10, QUEEN_COUNT);
 	CSLIDE(11, QUEEN_COUNT);
-	return count;
+	return count>>1;
 }
 int count_knight_moves(const Colors c, const Pos root_pos)
 {
@@ -5752,6 +5752,7 @@ inline bool close_to_mate(int score)
 #define LMR
 #define NULL_MOVE
 //#define SIMPLE_EVAL
+//#define SMART_EVAL
 
 
 //#define IGNORE_TT
@@ -5879,10 +5880,14 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 	int g, a;
 	int second_best_value = INF;
 	const bool ninpv =
+#ifdef SMART_EVAL
+		InIID;
+#else
 #ifdef SIMPLE_EVAL
 		true;
 #else
 		InIID || alpha == beta - 1;
+#endif
 #endif
 	if (d == -QUIESCENT_DEPTH) {
 		g = (n == nullptr ? (ninpv ? simple_eval() : eval()) : n->get_eval(ninpv)); /* leaf node */
@@ -6069,10 +6074,10 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 								c = MovesOrdered.best();
 								c.make();
 								{
-										intptr_t h = (intptr_t)&HashTable[((int)(Hash.low) & HASH_MASK)];
+								//		intptr_t h = (intptr_t)&HashTable[((int)(Hash.low) & HASH_MASK)];
 								//		intptr_t aligned = h&-64;
 								//		intptr_t len = h - aligned + sizeof(HashTableEntry);
-										_mm_prefetch((char *)(h), _MM_HINT_T0);
+								//		_mm_prefetch((char *)(h), _MM_HINT_T0);
 								//		_mm_prefetch((char *)(aligned+64), _MM_HINT_T0);
 								//		_mm_prefetch((char *)(aligned+128), _MM_HINT_T0);
 
@@ -6107,10 +6112,10 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 					break;
 				}
 				{
-					intptr_t h = (intptr_t)&HashTable[((int)(Hash.low) & HASH_MASK)];
+//					intptr_t h = (intptr_t)&HashTable[((int)(Hash.low) & HASH_MASK)];
 					//		intptr_t aligned = h&-64;
 					//		intptr_t len = h - aligned + sizeof(HashTableEntry);
-					_mm_prefetch((char *)(h), _MM_HINT_T0);
+//					_mm_prefetch((char *)(h), _MM_HINT_T0);
 					//		_mm_prefetch((char *)(aligned+64), _MM_HINT_T0);
 					//		_mm_prefetch((char *)(aligned+128), _MM_HINT_T0);
 
@@ -6472,11 +6477,15 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 								//								else val1 = val2;
 							}
 #else
+#define MARGIN PAWN_VALUE
 							int val2;
 							val1 = -NegaScout(-(a + 1), -(a), new_depth, false, somewhere_in_null, false, alpha_real, r, other_in_check, realdepth - 1);
-							if (val1 < beta && val1 >= a) {
+							bool interesting;
+							if (InIID) interesting = val1 < beta && val1 >= a;
+							else interesting = val1 < beta + MARGIN && val1 >= a - MARGIN;
+							if ( interesting) {
 								val2 = -NegaScout(-beta, -val1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
-								if (val2 < val1) val1 = -NegaScout(-beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
+								if (val2 < val1) val1 = -NegaScout(-val2, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
 								else val1 = val2;
 							}
 #endif
@@ -6592,10 +6601,14 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			n->set_move(best_move, d);
 		}
 		if (g == -INF) {
+#ifdef SMART_EVAL
+			if (d < 1) return (n == nullptr ? (ninpv ? simple_eval() : eval()) : n->get_eval(ninpv));
+#else
 #ifdef SIMPLE_EVAL
 			if (d < 1) return (n == nullptr ? simple_eval() : n->get_eval(true));
 #else
 			if (d < 1) return (n == nullptr ? (ninpv ? simple_eval() : eval()) : n->get_eval(alpha == beta - 1));
+#endif
 #endif
 			if (in_check) return -KING_VALUE - d - QUIESCENT_DEPTH;//includes waiting penalty
 			return 0;
