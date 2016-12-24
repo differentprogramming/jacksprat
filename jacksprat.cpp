@@ -6705,8 +6705,8 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 				int lmr_dec = 0;
 				int delay_inc = 1;
 
-				if (d>=MinDepth-5) lmr_dec = -2;
-				else if (d <= 4 && d<MinDepth >> 1) {
+				if (d>=MinDepth-5) lmr_dec = (MinDepth - 6)-d;
+				else if ((d <= 4 && d<MinDepth >> 1)|| MinDepth-d>5) {
 					lmr_dec = 1;
 					delay_inc = 0;
 				}
