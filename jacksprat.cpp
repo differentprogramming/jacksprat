@@ -7769,7 +7769,7 @@ void xboard()
 		}
 		if (!strcmp(command, "sd")) {
 			sscanf(line, "sd %d", &MaxDepth);
-			++MaxDepth;
+		
 			MaxTime = 1 << 25;
 			continue;
 		}
