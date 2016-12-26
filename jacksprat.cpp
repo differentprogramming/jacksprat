@@ -6,7 +6,13 @@
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
-#include "windows.h"
+#include <math.h>
+#include <string.h>
+
+#ifdef __GNUC__
+#define __min(x,y) ((x)<(y)?(x):(y))
+#define __max(x,y) ((x)>=(y)?(x):(y))
+#endif
 
 
 #define KING_VALUE 25000
@@ -517,7 +523,7 @@ void resetPawnsDirty()
 	PawnsDirtyCompare = 0;
 }
 
-int PawnsValue;
+double PawnsValue;
 
 const PieceType Initial_Pieces[] = {
 	PAWN,PAWN,PAWN,PAWN,PAWN,PAWN,PAWN,PAWN,
@@ -1136,7 +1142,7 @@ const Pos ROOK_THREAT_DESC[] = { EXPANDING_THREATS,4,-10,+10, -1, +1 };
 const Pos BISHOP_THREAT_DESC[] = { EXPANDING_THREATS,4,+9,+11,-9,-11 };
 
 int PersistantValue;
-int EphemeralValue;
+double EphemeralValue;
 
 int CurrentPly = 0;
 PlayersType Players;
@@ -1444,7 +1450,7 @@ int shielding_king(PieceSlotType s, Pos p)
 	return 8;
 }
 
-inline void add_bonus(Colors side, short bonus)
+inline void add_bonus(Colors side, double bonus)
 {
 	if (side == PlySide()) EphemeralValue += bonus;
 	else EphemeralValue -= bonus;
@@ -1564,14 +1570,14 @@ struct Move
 				if (initial == KING_NOT_MOVED || initial == ROOK_NOT_MOVED) {
 					switch (ways_can_castle(color(Board[from]))) {
 						case 1: 
-							bonus -= 30* material_threat>>12; 
+							bonus -= 30* material_threat>>10; 
 							break;
 						case 2: 
-							if (initial == KING_NOT_MOVED) bonus -= 30 * material_threat >> 12; 
-							else bonus -= 30 * material_threat >> 12;
+							if (initial == KING_NOT_MOVED) bonus -= 30 * material_threat >> 10; 
+							else bonus -= 30 * material_threat >> 10;
 					}
 				}
-				else if (became == KING || became == KING_CASTLED) bonus -= 15* material_threat >> 12;
+				else if (became == KING || became == KING_CASTLED) bonus -= 15* material_threat >> 10;
 			}
 		}
 		//*/
@@ -1828,7 +1834,7 @@ struct HH
 
 HH EmptyHH;
 HH HHTable[(NUM_PIECE_SLOTS + 1)*(NUM_PIECE_SLOTS + 1)*(h1 - a8 + 1) * 2 * (h1 - a8 + 1)];
-HH &GetHH(bool quiescent, RelativeMove &r)
+HH &GetHH(bool quiescent, const RelativeMove &r)
 {
 	if (r.from == NO_SLOT) return EmptyHH;
 	//	return CounterMoveTable[s + (h1 - a8 + 1)*(from - a8) + ((h1 - a8 + 1)*(h1 - a8 + 1))*(to - a8)];
@@ -2156,7 +2162,7 @@ struct RepeatListStruct {
 	int history;
 	RepeatBin bins[REPEAT_BINS];
 
-	struct RepeatListStruct() {
+	RepeatListStruct() {
 		clear();
 	}
 	void clear()
@@ -2397,7 +2403,7 @@ int CALC_SEE(Pos root_pos)
 	if (!is_piece(s)) return 0;
 	return CALC_SEE(color(s), root_pos, s, INF);
 }
-bool Safety(Colors c, Pos root_pos, int &escape);
+int Safety(Colors c, Pos root_pos);
 bool king_in_check(Colors c);
 void calc_pawns()
 {
@@ -2432,8 +2438,39 @@ void calc_pawns()
 	for (int c = LIGHT;c < NUM_COLORS;++c) {
 		int base = base_by_color((Colors)c);
 		{
-//#define KING_SAFETY
+#define KING_SAFETY
 #ifdef KING_SAFETY
+
+			Pos king_pos = Players.positions[base + KINGP];
+			int units = 0;
+			int ys, ye;
+			if (c == LIGHT) {
+				ys = -10;ye = 20;
+			}
+			else {
+				ys = -20;ye = 10;
+			}
+			for (Pos x = -1;x <= 1;++x) {
+				for (Pos y = ys;y <= ye;y += 10) {
+					//if ((x==0 && y==0) || Board[king_pos + x + y] == EMPTY) {
+						units += Safety((Colors)c, king_pos + x + y);
+					//}
+				}
+			}
+			static const int SafetyTable[100] = {
+				0,  0,   1,   2,   3,   5,   7,   9,  12,  15,
+				18,  22,  26,  30,  35,  39,  44,  50,  56,  62,
+				68,  75,  82,  85,  89,  97, 105, 113, 122, 131,
+				140, 150, 169, 180, 191, 202, 213, 225, 237, 248,
+				260, 272, 283, 295, 307, 319, 330, 342, 354, 366,
+				377, 389, 401, 412, 424, 436, 448, 459, 471, 483,
+				494, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+				500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+				500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+				500, 500, 500, 500, 500, 500, 500, 500, 500, 500
+			};			
+			EvalTemp[c] -= SafetyTable[units]*2;
+			/*
 			//king_safety
 			Pos king_pos = Players.positions[base + KINGP];
 			int escape = 0;
@@ -2457,6 +2494,7 @@ void calc_pawns()
 			}
 			if (in_check) danger += 20 / (escape + 1) + 9;
 			EvalTemp[c] -= (danger+1)>>1;
+		*/
 #else
 			if (king_in_check((Colors)c)) EvalTemp[c] -= 20;
 #endif
@@ -2537,7 +2575,7 @@ void calc_pawns()
 		}
 		for (int i = 0;i < 10;++i) {
 			if (PromotionTempo[i] != NUM_COLORS) {
-				PawnsTemp[PromotionTempo[i]] += (QUEEN_VALUE - (82 + 30 + 90))>>2;
+				PawnsTemp[PromotionTempo[i]] += (QUEEN_VALUE - (82 + 30 + 90))>>3;
 				break;
 			}
 		}
@@ -2972,8 +3010,8 @@ bonus(SHORTINF)
 INITLINE
 {
 	//	assert(t!=h1);//find bug
-	massert(color(Board[f]) != OFF_BOARD);
-	massert(color(Board[f]) != NO_SLOT);
+	massert(Board[f] != OFF_BOARD);
+	massert(Board[f] != NO_SLOT);
 	massert(slot_taken == NO_SLOT || color(slot_taken) != color(Board[f]));
 	massert(slot_taken == NO_SLOT || Players.pieces[slot_taken] != EMPTY);
 }
@@ -3134,7 +3172,7 @@ void Move::make()
 
 	const PieceSlotType slot_moving = Board[from];
 	movement_bonuses();
-	add_bonus(color(slot_moving), bonus);
+	add_bonus(color(slot_moving), bonus*.25);
 	Colors side = PlySide();//color(slot_moving);
 							//	if (not_move()) {
 							//		sub_value(side,slot_moving);
@@ -3212,7 +3250,7 @@ void Move::unmake()
 
 	const PieceSlotType slot_moving = Board[to];
 	Colors side = PlySide();//color(slot_moving);
-	add_bonus(color(slot_moving), -bonus);
+	add_bonus(color(slot_moving), -.25*bonus);
 
 	//	if (not_move()) {
 	//		sub_value(side,slot_moving);
@@ -3667,7 +3705,7 @@ void print_board()
 	for (int row = 0;row < 80;row += 10) {
 		printf("\n%d ", 8 - row / 10);
 		for (int col = a8; col <= h8; ++col) {
-			if (Board[row + col] == NO_SLOT) printf(" .");
+			if (Board[row + col] == NO_SLOT) printf(" . ");
 			else printf(" %c%c", piece_char(color(Board[row + col]), Players.pieces[Board[row + col]]), piece_char2(Players.pieces[Board[row + col]]));
 		}
 	}
@@ -3735,7 +3773,7 @@ struct HashMove
 	{
 		from = 0;
 	}
-	bool empty()
+	bool empty() const
 	{
 		return from == 0;
 	}
@@ -3795,6 +3833,7 @@ public:
 	{
 		upper_bound_depth = lower_bound_depth = -127;
 		move.clear();
+		second_move.clear();
 		eval_copy = INF;
 		upper_exact = lower_exact = false;
 	}
@@ -3833,6 +3872,7 @@ public:
 	char move_depth;
 	int move_created;
 	HashMove move;
+	HashMove second_move;
 };
 
 
@@ -4874,6 +4914,21 @@ const PieceType ComparisonPiece[] =
 	QUEEN,
 };
 
+#define REV_HVSLIDE_KN(direction) \
+expanding = root_pos ;\
+do { \
+	expanding+=direction;\
+	if (Board[expanding] == NO_SLOT) { \
+		continue; \
+	}\
+	if (Board[expanding] != OFF_BOARD && color(Board[expanding]) != c) \
+		switch(Players.pieces[Board[expanding]]){\
+			case ROOK_NOT_MOVED: case ROOK: units+=3; break;\
+			case QUEEN: units+=5;\
+		}\
+	break; \
+} while (true)
+
 
 #define REV_HVSLIDE(direction) \
 expanding = root_pos ;\
@@ -4917,6 +4972,22 @@ do { \
 		}\
 	break; \
 } while (true)
+
+#define REV_DSLIDE_KN(direction) \
+expanding = root_pos ;\
+do { \
+	expanding+=direction;\
+	if (Board[expanding] == NO_SLOT) { \
+		continue; \
+	}\
+	if (Board[expanding] != OFF_BOARD && color(Board[expanding]) != c) \
+		switch(Players.pieces[Board[expanding]]){\
+			case BISHOP: units+=2; break;\
+			case QUEEN: units+= 5;\
+		}\
+	break; \
+} while (true)
+
 
 #define REV_GEN_DSLIDE(direction) \
 expanding = root_pos ;\
@@ -5068,8 +5139,8 @@ int calc_pins(Colors c, Pos root_pos, PieceSlotType *pins, PieceSlotType *pinner
 #define REV_POS(direction,piece) \
 if (is_piece((Pos)(root_pos+direction)) && color(Board[root_pos+direction]) != c && ComparisonPiece[Players.pieces[Board[root_pos+direction]]]==piece) return true;
 
-#define REV_POS_KN(direction,piece) \
-if (is_piece((Pos)(root_pos+direction)) && color(Board[root_pos+direction]) != c && ComparisonPiece[Players.pieces[Board[root_pos+direction]]]==piece) --escape;
+#define REV_POS_KN(direction,piece,value) \
+if (is_piece((Pos)(root_pos+direction)) && color(Board[root_pos+direction]) != c && ComparisonPiece[Players.pieces[Board[root_pos+direction]]]==piece) units+=value;
 
 
 #define EX_REV_POS(direction,piece) \
@@ -5122,7 +5193,7 @@ if (is_piece((Pos)(root_pos+direction)) && color(Board[root_pos+direction]) != c
 	if (c==LIGHT) {REV_POS(-9,PAWN);REV_POS(-11,PAWN);} else {REV_POS(9,PAWN);REV_POS(11,PAWN); }
 
 #define REV_PAWN_KN \
-	if (c==LIGHT) {REV_POS_KN(-9,PAWN);REV_POS_KN(-11,PAWN);} else {REV_POS_KN(9,PAWN);REV_POS_KN(11,PAWN); }
+	if (c==LIGHT) {REV_POS_KN(-9,PAWN,1);REV_POS_KN(-11,PAWN,1);} else {REV_POS_KN(9,PAWN,1);REV_POS_KN(11,PAWN,1); }
 
 #define EX_REV_PAWN \
 	if (c==LIGHT) {EX_REV_POS(-9,PAWN);EX_REV_POS(-11,PAWN);} else {EX_REV_POS(9,PAWN);EX_REV_POS(11,PAWN); }
@@ -5278,35 +5349,36 @@ bool ThreatenedExcluding(Colors c, Pos root_pos, PieceSlotType exclude)
 	return false;
 }
 
-bool Safety(Colors c, Pos root_pos, int &escape)
+int Safety(Colors c, Pos root_pos)
 {
+	int units=0;
 	int expanding;
-	REV_DSLIDE(-11);
-	REV_HVSLIDE(-10);
-	REV_DSLIDE(-9);
-	REV_HVSLIDE(-1);
-	REV_HVSLIDE(1);
-	REV_DSLIDE(9);
-	REV_HVSLIDE(10);
-	REV_DSLIDE(11);
-	REV_POS_KN(-21, KNIGHT);
-	REV_POS_KN(-19, KNIGHT);
-	REV_POS_KN(-12, KNIGHT);
-	REV_POS_KN(-11, KING);
-	REV_POS_KN(-10, KING);
-	REV_POS_KN(-9, KING);
-	REV_POS_KN(-8, KNIGHT);
-	REV_POS_KN(-1, KING);
-	REV_POS_KN(1, KING);
-	REV_POS_KN(8, KNIGHT);
-	REV_POS_KN(9, KING);
-	REV_POS_KN(10, KING);
-	REV_POS_KN(11, KING);
-	REV_POS_KN(12, KNIGHT);
-	REV_POS_KN(19, KNIGHT);
-	REV_POS_KN(21, KNIGHT);
+	REV_DSLIDE_KN(-11);
+	REV_HVSLIDE_KN(-10);
+	REV_DSLIDE_KN(-9);
+	REV_HVSLIDE_KN(-1);
+	REV_HVSLIDE_KN(1);
+	REV_DSLIDE_KN(9);
+	REV_HVSLIDE_KN(10);
+	REV_DSLIDE_KN(11);
+	REV_POS_KN(-21, KNIGHT,2);
+	REV_POS_KN(-19, KNIGHT, 2);
+	REV_POS_KN(-12, KNIGHT, 2);
+	REV_POS_KN(-11, KING,1);
+	REV_POS_KN(-10, KING,1);
+	REV_POS_KN(-9, KING,1);
+	REV_POS_KN(-8, KNIGHT, 2);
+	REV_POS_KN(-1, KING,1);
+	REV_POS_KN(1, KING,1);
+	REV_POS_KN(8, KNIGHT, 2);
+	REV_POS_KN(9, KING,1);
+	REV_POS_KN(10, KING,1);
+	REV_POS_KN(11, KING,1);
+	REV_POS_KN(12, KNIGHT, 2);
+	REV_POS_KN(19, KNIGHT, 2);
+	REV_POS_KN(21, KNIGHT, 2);
 	REV_PAWN_KN;
-	return false;
+	return units;
 }
 
 
@@ -5787,12 +5859,14 @@ CountMoveStruct &CounterMove(bool quiescent, RelativeMove &r)
 bool EnableHistory;
 struct MoveGenerator
 {
-	enum State { Initial, PositiveCaptures, DoCounterMove, Killers, AfterKillers, GeneratedMoves, BEFORE_IID, IID };
-	Move killer_moves[NUM_KILLERS + 2];
+	enum State { Initial, Second, PositiveCaptures, DoCounterMove, Killers, AfterKillers, GeneratedMoves, BEFORE_IID, IID };
+	Move killer_moves[NUM_KILLERS + 3];
 	int num_killer;
 	int killer_iterator;
 	int capture_iterator;
 	bool initial_ok;
+	bool second_ok;
+	HashMove second_move;
 	bool quiescent;
 	State state;
 	Colors side;
@@ -5807,7 +5881,7 @@ struct MoveGenerator
 	bool try_iid;
 	bool gen_rest;
 	int count_killers;
-	void init(int d, Move &initial, RelativeMove &lm, int v, bool ti)
+	void init(int d, const Move &initial, const HashMove &second, const RelativeMove &lm, int v, bool ti)
 	{
 		count_killers = 0;
 		gen_rest = true;
@@ -5821,7 +5895,7 @@ struct MoveGenerator
 		num_killer = 0;
 		killer_iterator = 0;
 		capture_iterator = 0;
-		initial_ok = false;
+		initial_ok = second_ok = false;
 		depth = d;
 		quiescent = (d <= 0);
 		state = Initial;
@@ -5830,11 +5904,15 @@ struct MoveGenerator
 		{
 			initial_ok = true;
 			killer_moves[num_killer++] = initial;
+			second_move = second;
+			if (!second.empty()) {
+				second_ok = true;
+			}
 		}
 	}
-	MoveGenerator(int depth, Move &initial, RelativeMove &lpm, int v, bool ti)
+	MoveGenerator(int depth, const Move &initial, const HashMove &second,const RelativeMove &lpm, int v, bool ti)
 	{
-		init(depth, initial, lpm, v, ti);
+		init(depth, initial,second, lpm, v, ti);
 	}
 	MoveGenerator()
 	{
@@ -5850,7 +5928,6 @@ struct MoveGenerator
 		switch (state) {
 		case Initial:
 			if (kind) *kind = state;
-			//			state = PositiveCaptures;
 			if (initial_ok) {
 				c = killer_moves[0];
 
@@ -5859,62 +5936,31 @@ struct MoveGenerator
 					c.unmake();
 				}
 				else {
-					state = BEFORE_IID;
+					state = Second;
 					//initial_ok = false;
 					return 1 << 10;//dummy value
 				}
 				--num_killer;
 			}
-			/*
-			state = CounterCaptures;
-			case CounterCaptures:
-			if (last_piece_moved != OFF_BOARD && !is_king(Players.pieces[last_piece_moved])) {
-			while (!MovesOrdered.empty() || GenThreat(capture_iterator, other_color(side), Players.positions[last_piece_moved])) {
-			while (MovesOrdered.find_best() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
-			) {
-			MovesOrdered.best().make();
-			if (king_in_check(side)) {//illegal to make a move that leaves your king in check
-			MovesOrdered.best().unmake();
-			continue;
-			}
-			c = MovesOrdered.best();
+		case Second:
 			if (kind) *kind = state;
-			capture_iterator = 26;
-			return MovesOrdered.best_value();
+			if (second_ok) {
+				if (!second_move.empty()) c = TestMove(PlySide(), Board[second_move.from], second_move.to, second_move.became);
+				if (!c.empty()) {
+					killer_moves[num_killer++] = c;
+					c.make();
+					if (king_in_check(side)) {//illegal to make a move that leaves your king in check
+						c.unmake();
+					}
+					else {
+						state = BEFORE_IID;
+						//initial_ok = false;
+						return 1 << 10;//dummy value
+					}
+					second_ok = false;
+					--num_killer;
+				}
 			}
-			}
-			}
-			*/
-			/*
-			state = DoCounterMove;
-
-			case DoCounterMove:
-			{
-			if (false)
-			{
-			HashMove &counter_move = CounterMove(quiescent, last_move).get();
-			if (!counter_move.empty()) {
-			bool duplicate = false;
-			for (int i = 0;i < num_killer;++i) if (counter_move.from == killer_moves[i].from && counter_move.to == killer_moves[i].to) { duplicate = true; break; }
-			if (!duplicate) {
-			c = TestMove(side, Board[counter_move.from], counter_move.to, counter_move.became);
-			if (!(c.empty())) {
-			c.make();
-			if (king_in_check(side)) {//illegal to make a move that leaves your king in check
-			c.unmake();
-			}
-			else {
-			killer_moves[num_killer++] = c;
-			if (kind) *kind = state;
-			state = Killers;
-			return 1 << 10;//dummy value
-			}
-			}
-			}
-			}
-			}
-			}
-			*/;
 		case BEFORE_IID:
 			state = IID;
 			if (kind) *kind = state;
@@ -5928,8 +5974,16 @@ struct MoveGenerator
 			else {
 				GenMoves(side, val, depth);
 			}
+			if (num_killer>0) {
+				if (sort_pv(killer_moves[0])) MovesOrdered.pop();
+				if (num_killer>1) {
+					if (sort_pv(killer_moves[1])) MovesOrdered.pop();
+				}
+			}
 			if (//!initial_ok && 
-				try_iid)return 0;
+				try_iid) {
+				return 0;
+			}
 		case IID:
 			state = PositiveCaptures;
 		case PositiveCaptures:
@@ -6045,7 +6099,6 @@ struct MoveGenerator
 //		state = GeneratedMoves;
 		//			else return -INF;
 
-		state = GeneratedMoves;
 		//			*/
 		//bool LazyGenMove(int &i, bool quiescent, Colors c, Move *killer_moves, int num_killer)
 		state = GeneratedMoves;
@@ -6182,72 +6235,72 @@ int perft(int d)
 }
 
 
-double sqrt_table[] = {
+double inv_sqrt_table[] = {
 	0,
 	1,
-	1.4142135624,
-	1.7320508076,
-	2,
-	2.2360679775,
-	2.4494897428,
-	2.6457513111,
-	2.8284271247,
-	3,
-	3.1622776602,
-	3.3166247904,
-	3.4641016151,
-	3.6055512755,
-	3.7416573868,
-	3.8729833462,
-	4,
-	4.1231056256,
-	4.2426406871,
-	4.3588989435,
-	4.472135955,
-	4.582575695,
-	4.6904157598,
-	4.7958315233,
-	4.8989794856,
-	5,
-	5.0990195136,
-	5.1961524227,
-	5.2915026221,
-	5.3851648071,
-	5.4772255751,
-	5.5677643628,
-	5.6568542495,
-	5.7445626465,
-	5.8309518948,
-	5.9160797831,
-	6,
-	6.0827625303,
-	6.164414003,
-	6.2449979984,
-	6.3245553203,
-	6.4031242374,
-	6.4807406984,
-	6.5574385243,
-	6.6332495807,
-	6.7082039325,
-	6.7823299831,
-	6.8556546004,
-	6.9282032303,
-	7,
-	7.0710678119,
-	7.1414284285,
-	7.2111025509,
-	7.2801098893,
-	7.3484692283,
-	7.4161984871,
-	7.4833147735,
-	7.5498344353,
-	7.6157731059,
-	7.6811457479,
-	7.7459666924,
-	7.8102496759,
-	7.874007874,
-	7.9372539332,
-	8,
+	1/1.4142135624,
+	1 / 1.7320508076,
+	1 / 2,
+	1 / 2.2360679775,
+	1 / 2.4494897428,
+	1 / 2.6457513111,
+	1 / 2.8284271247,
+	1 / 3,
+	1 / 3.1622776602,
+	1 / 3.3166247904,
+	1 / 3.4641016151,
+	1 / 3.6055512755,
+	1 / 3.7416573868,
+	1 / 3.8729833462,
+	1 / 4,
+	1 / 4.1231056256,
+	1 / 4.2426406871,
+	1 / 4.3588989435,
+	1 / 4.472135955,
+	1 / 4.582575695,
+	1 / 4.6904157598,
+	1 / 4.7958315233,
+	1 / 4.8989794856,
+	1 / 5,
+	1 / 5.0990195136,
+	1 / 5.1961524227,
+	1 / 5.2915026221,
+	1 / 5.3851648071,
+	1 / 5.4772255751,
+	1 / 5.5677643628,
+	1 / 5.6568542495,
+	1 / 5.7445626465,
+	1 / 5.8309518948,
+	1 / 5.9160797831,
+	1 / 6,
+	1 / 6.0827625303,
+	1 / 6.164414003,
+	1 / 6.2449979984,
+	1 / 6.3245553203,
+	1 / 6.4031242374,
+	1 / 6.4807406984,
+	1 / 6.5574385243,
+	1 / 6.6332495807,
+	1 / 6.7082039325,
+	1 / 6.7823299831,
+	1 / 6.8556546004,
+	1 / 6.9282032303,
+	1 / 7,
+	1 / 7.0710678119,
+	1 / 7.1414284285,
+	1 / 7.2111025509,
+	1 / 7.2801098893,
+	1 / 7.3484692283,
+	1 / 7.4161984871,
+	1 / 7.4833147735,
+	1 / 7.5498344353,
+	1 / 7.6157731059,
+	1 / 7.6811457479,
+	1 / 7.7459666924,
+	1 / 7.8102496759,
+	1 / 7.874007874,
+	1 / 7.9372539332,
+	1 / 8,
 
 };
 
@@ -6285,8 +6338,9 @@ int MinDepth;
 
 bool InIID = false;
 bool Smart = false;
+int LMR_THIN_THRESHOLD;
 
-int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, int beta_real, RelativeMove &last_move,bool in_check, int realdepth, int extensions)
+int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, int beta_real, const RelativeMove &last_move,bool in_check, int realdepth, int extensions)
 {
 	PieceSlotType last_piece_moved = last_move.from;
 	if (d <= 0) {
@@ -6307,6 +6361,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 	Colors my_color = PlySide();
 	HashTableEntry *n = nullptr;
 	Move m2;
+	HashMove m3;
 	int move_depth = -127;
 #ifndef IGNORE_TT
 	//if (d>0)
@@ -6388,6 +6443,8 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			}
 		}
 		else if (CurrentPly == 0) m2 = Ply0Move;
+
+		m3 = n->second_move;
 	}
 	//else if (CurrentPly == 0) m2 = Ply0Move;
 #endif
@@ -6491,7 +6548,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			if (CurrentPly > 3 && d == 1 && val - BISHOP_VALUE > beta) return val;
 			if (beta_real && CurrentPly > 3 && d == 2 && val - ROOK_VALUE > beta) return val;
 			*/
-			if (CurrentPly > 3 && d == 1 && lower_val - BISHOP_VALUE > beta) return val;
+			//if (CurrentPly > 3 && d == 1 && lower_val - BISHOP_VALUE > beta) return val;
 			//			if (beta_real && CurrentPly > 3 && d == 2 && lower_val - ROOK_VALUE > beta) return val;
 		}
 #endif
@@ -6500,13 +6557,13 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 #ifdef NULL_MOVE
 		if (//beta_real &&
 			alpha == beta - 1 &&
-			lower_val> beta - BISHOP_VALUE &&
+			lower_val> beta - BISHOP_VALUE-PAWN_VALUE &&
 			//val < beta + BISHOP_VALUE &&
 			//beta != INF &&
 			//!in_null 
 			!in_null
 			&&
-			//CurrentPly>2 &&
+//			CurrentPly>1 &&
 			!in_check &&
 			!SideInEndgame_for_null(my_color) &&
 			d >= 3 &&
@@ -6516,7 +6573,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			int new_value;
 			int new_depth;
 			try {
-				new_depth = __max(d - 4, 1);//
+				new_depth = __min(2,__max(d - 4, 1));//
 											//(d>6?d - 5: __max(d - 4, 0));
 				new_value = -NegaScout(-beta, -beta + 1, new_depth, true, -alpha, false, EmptyMove,false,new_depth,INF);
 			}
@@ -6526,17 +6583,17 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			}
 			dec_ply();
 			if (new_value >= beta) {
-//				new_value = NegaScout(beta - 1, beta, new_depth, true, somewhere_in_null, false, beta_real, last_move,in_check, new_depth);
-//				if (new_value >= beta) {
+				new_value = NegaScout(beta - 1, beta, new_depth, true, true, -alpha, last_move,in_check, new_depth, INF);
+				if (new_value >= beta) {
 					if (d <= 0)  --MidNodes; else --NCMidNodes;
 					return new_value;
-//				}
+				}
 			}
 		}
 #endif
 		if (d == 1)--NCMidNodes;
 		Move c;
-		Move best_move;
+		Move best_move, second_best_move;
 		int last_depth = d - 1;
 		int best_value;
 		MoveGenerator::State best_move_type;
@@ -6544,7 +6601,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 		MoveGenerator &moves = MoveGenerators[CurrentPly];
 		EnableHistory = true;
 		moves.init(d//in_check ? (__max(1, d)) : d
-			, m2, last_move, val, alpha != beta - 1 && !SideInEndgame_for_null(other_color(my_color)) //&& CheckForEndgame
+			, m2, m3, last_move, val, alpha != beta - 1 && !SideInEndgame_for_null(other_color(my_color)) //&& CheckForEndgame
 			//||val>beta
 		);
 		g = -INF; a = alpha; /* save original alpha value */
@@ -6557,7 +6614,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 
 		bool in_endgame = SideInEndgame(my_color);
 		double sum_above_alpha = 0;
-		double sum_above_inc = 10;
+		double sum_above_inc = 7;
 		int num_moves = 0;
 		if (SufficientPieces == 0 && MinorPieces[LIGHT] < 2 && MinorPieces[DARK] < 2) {
 			//g = 0;
@@ -6577,8 +6634,9 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 				if (a != alpha) EnableHistory = false;
 				if (move_type == MoveGenerator::IID) {
 
-					int iid_depth = (int)(d*717>>10);
-					if (iid_depth > d - 2) iid_depth = d - 2;
+					int iid_depth = d * 717 >> 10;
+					if (iid_depth > d - 3) iid_depth = d - 3;
+					else if (iid_depth < 1)iid_depth = 1;
 					if (move_depth >= iid_depth) {
 						EnableHistory = true;
 						//if (move_depth > d-4) EnableHistory = true;
@@ -6589,6 +6647,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 						EnableHistory = false;
 						bool in_iid_temp = InIID;
 						InIID = true;
+						moves.state = MoveGenerator::GeneratedMoves;
 						try {
 							MovesOrdered.unmark();
 							val1 = g;//(alpha != beta - 1 ? g : (beta - 1));
@@ -6674,6 +6733,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 					}
 					else if (new_depth < realdepth-2)new_depth = realdepth - 2;
 				}
+
 //				if (move_value >(ROOK_VALUE - 2 * PAWN_VALUE) << 10 && extensions < 3) {
 //					++realdepth;
 //					++extensions;
@@ -6702,36 +6762,51 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 				//					continue;
 				//				}
 #ifdef LMR
-				int lmr_dec = 0;
-				int delay_inc = 1;
+				int lmr_dec = 0;   //middle
+				int delay_inc = 1; //
 
-				if (d>=MinDepth-5) lmr_dec = (MinDepth - 6)-d;
-				else if ((d <= 4 && d<MinDepth >> 1)|| MinDepth-d>5) {
+//				if (d >= MinDepth - 3) { //root
+//					lmr_dec = (MinDepth - 5) - d;
+//					delay_inc = 1;
+//				}
+	//			else 
+				if (//d <= 4 &&           //leaves
+					 d<__min(MinDepth >> 1, MinDepth -5))
+//					d<LMR_THIN_THRESHOLD)
+					//|| d<MinDepth - 7
+				 {
 					lmr_dec = 1;
-					delay_inc = 0;
+//					delay_inc = 1;
 				}
+	//			if (d<MinDepth >> 2) delay_inc = 0;
+
+//				lmr_dec = 1;
+//				delay_inc = 0;
 
 				if (!other_in_check
-					&& d>0 && d<MinDepth-2 && !in_check //&& move_type == MoveGenerator::GeneratedMoves //(iid_value >> 10 <= 0)  // || move_count>=3) 
+					&& d>0 //&& d<MinDepth-2 
+					&& !in_check //&& move_type == MoveGenerator::GeneratedMoves //(iid_value >> 10 <= 0)  // || move_count>=3) 
 										  //&&  a == beta - 1
-										  //&& c.slot_taken != NO_SLOT
+					&& CurrentPly>2
 					&& (c.became == c.initial || is_pawn(c.became) || is_rook(c.initial) || is_king(c.initial))
 					&& !is_king(c.initial)
-					&& !(is_pawn(c.initial))) {
+					&& !(is_pawn(c.initial)))
+				{
 					if (a == beta - 1 //|| InIID
 						) {
 						if (c.slot_taken != NO_SLOT) {
 							//non pv, non capture
-							if (move_value <= 0 || move_count + lmr_dec > 3) // && CheckForEndgame 
+							if (move_value <= 0 || move_count > 3) // && CheckForEndgame 
 							{
 								++reduced;
 								--new_depth;
 								if (d > 2 && reduced + lmr_dec > 3) {
 									--new_depth;
-									if (d > 3 && reduced + lmr_dec > 7) {
+									if (//lmr_dec>=0 && 
+										d > 3 && reduced + lmr_dec*2 > 7) {
 										--new_depth;
 										++delay;
-										if (d > 4 && reduced + lmr_dec > 13) {
+										if (d > 4 && reduced + lmr_dec*3 > 13) {
 											--new_depth;
 											++delay;
 										}
@@ -6746,9 +6821,10 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 								++reduced;
 								--new_depth;
 								delay += delay_inc;
-								if (d > 2 && reduced + lmr_dec > 3) {
+								if (//lmr_dec >= 0 && 
+									d > 2 && reduced + lmr_dec > 3) {
 									--new_depth;
-									delay += delay_inc;
+//									delay += delay_inc;
 								}
 							}
 						}
@@ -6761,9 +6837,10 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 								++reduced;
 								--new_depth;
 								//++delay;
-								if (d > 2 && reduced + lmr_dec > 3) {
+								if (//lmr_dec >= 0 &&
+									d > 2 && reduced + lmr_dec > 3) {
 									--new_depth;
-									delay += delay_inc;
+//									delay += delay_inc;
 								}
 							}
 						}
@@ -7098,6 +7175,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			register_move:
 				if (val1 > g) {
 					g = val1;
+					second_best_move = best_move;
 					best_move = c;
 					best_move_type = move_type;
 					if (CurrentPly == 1) Ply0Move = c;
@@ -7109,6 +7187,11 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 				InIID = wasIID;
 				c.unmake();
 			}
+
+			if (g >= beta && second_best_move.empty() && !MovesOrdered.empty() && (moves.found || MovesOrdered.find_best())) {
+				 second_best_move=MovesOrdered.best();
+			}
+
 			if (!c.empty() && move_count == 1 && g < beta && CurrentPly+realdepth<MAX_MOVES+QUIESCENT_DEPTH+1) {
 				c.make();
 				int val1;
@@ -7142,6 +7225,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 				if (val1 > g) {
 					second_best_value = g;
 					g = val1;
+					second_best_move = best_move;
 					best_move = c;
 					best_value = move_value;
 					best_move_type = move_type;
@@ -7167,11 +7251,9 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			//g -= g >> 5;
 			if (second_best_value != -INF && second_best_value >= alpha && d>0 //&& g < beta// && (CurrentPly&1)!=0
 				) {
-				 g = __min(beta_real-1,g + (//(second_best_value *0.04 )
-					//+
-					sum_above_alpha/sqrt_table[d]
-					));
-				//else g += ((second_best_value * 0.04)
+				 //g = __min(beta_real-1,g + (sum_above_alpha*2/sqrt_table[d]));
+				 g =  g + sum_above_alpha *inv_sqrt_table[d];
+				 //else g += ((second_best_value * 0.04)
 				//	+ sum_above_alpha);
 			}
 				;
@@ -7214,6 +7296,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			//			if (!(Hash == n->key)) n = nullptr;
 			//			else 
 			n->set_move(best_move, d);
+			if (!second_best_move.empty()) n->second_move = second_best_move;
 		}
 		if (g == -INF) {
 #ifdef SMART_EVAL
@@ -7273,6 +7356,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 
 int MTDF(int g, int d)
 {
+	//LMR_THIN_THRESHOLD = __max(MinDepth / 3, MinDepth - 5);
 	InIID = false;
 	Smart = false;
 	const bool other_in_check = king_in_check(PlySide());
@@ -7296,13 +7380,13 @@ int MaxTime;
 int StartTime;
 int MaxDepth;
 int TimeIncBy = 0;
-int clock;
+int Clock;
 bool TimeExtended;
 bool add_time()
 {
 	if (MaxDepth == MAX_PLY) {
-		if (clock > MaxTime << 4) {
-			clock -= MaxTime;
+		if (Clock > MaxTime << 4) {
+			Clock -= MaxTime;
 			TimeIncBy += MaxTime;
 			StopTime += MaxTime;
 			TimeExtended = true;
@@ -7363,7 +7447,7 @@ void think(int output)
 	NumberOnFirstMove = 0;
 
 	USE_TT = true;
-	EphemeralValue = 0;
+	EphemeralValue *= .94;
 	TimeExtended = false;
 	int i, j, x;
 	for (i = 0;i < MAX_PLY - 2;++i) {
@@ -7408,7 +7492,7 @@ void think(int output)
 
 		//if (i < 6) QUIESCENT_DEPTH = 5;//5;
 		//else
-			QUIESCENT_DEPTH = 20;//11;
+			QUIESCENT_DEPTH = 5;//11;
 
 		MinDepth = i;
 		HashType test = Hash;
@@ -7537,7 +7621,7 @@ bool make_move(Move &m)
 #define SAFETY_MARGIN 100
 #define CLOCK_SAFETY_MARGIN 100
 
-int control_period, control_period_original, time_base_min, time_base_sec, time_inc, time_base;
+int control_period, control_period_original, time_base_min, time_base_sec, time_inc, _time_base;
 int exact_time;
 bool roll_over_check;
 int roll_over_increment;
@@ -7547,7 +7631,7 @@ void xboard()
 	int m;
 	int post = 0;
 
-	control_period = 0; time_base_min = 0; time_base_sec = 0; time_inc = 0; time_base = 0; clock = 0, exact_time = 0;
+	control_period = 0; time_base_min = 0; time_base_sec = 0; time_inc = 0; _time_base = 0; Clock = 0, exact_time = 0;
 
 	printf("\n");
 	init_board();
@@ -7568,15 +7652,15 @@ void xboard()
 				}
 				else {
 					if (control_period != 0) {
-						LOG(Log << "control_period " << control_period << " clock " << clock << " time_inc " << time_inc << endl);
-						//MaxTime = (clock- SAFETY_MARGIN) / (abs(control_period)*3>>1);
-						MaxTime =(int)(.5+.95*(clock - CLOCK_SAFETY_MARGIN) / (abs(control_period)));
+						LOG(Log << "control_period " << control_period << " Clock " << Clock << " time_inc " << time_inc << endl);
+						//MaxTime = (Clock- SAFETY_MARGIN) / (abs(control_period)*3>>1);
+						MaxTime =(int)(.5+.95*(Clock - CLOCK_SAFETY_MARGIN) / (abs(control_period)));
 						if (MaxTime <= 0) {
 							if (time_inc > 0) MaxTime = 0;
-							else MaxTime = (int)(.5 + .95*(clock / abs(control_period)));
+							else MaxTime = (int)(.5 + .95*(Clock / abs(control_period)));
 						}
-						clock -= MaxTime;
-						if (clock <= SAFETY_MARGIN) {
+						Clock -= MaxTime;
+						if (Clock <= SAFETY_MARGIN) {
 							if (time_inc > SAFETY_MARGIN) MaxTime += (int)(.5 + .95*(time_inc - SAFETY_MARGIN));
 							else MaxTime += 7 * time_inc >> 3;
 						}
@@ -7592,10 +7676,10 @@ void xboard()
 						}
 					}
 					else {
-						LOG(Log << "clock " << clock << " time_inc " << time_inc << endl);
-						MaxTime = (clock - SAFETY_MARGIN) / 25;
-						clock -= MaxTime;
-						if (clock <= SAFETY_MARGIN) {
+						LOG(Log << "Clock " << Clock << " time_inc " << time_inc << endl);
+						MaxTime = (Clock - SAFETY_MARGIN) / 25;
+						Clock -= MaxTime;
+						if (Clock <= SAFETY_MARGIN) {
 							if (time_inc > SAFETY_MARGIN) MaxTime += (int)(.5 + .95*(time_inc - SAFETY_MARGIN));
 							else MaxTime += (time_inc >> 1);
 						}
@@ -7659,14 +7743,14 @@ void xboard()
 				sscanf(line, "level %d %d %d", &control_period, &time_base_min, &time_inc);
 			}
 			LOG(Log << "control_period " << control_period << " time_base_min " << time_base_min << "time_base_sec" << time_base_sec << " extra " << extra << " time_inc " << time_inc << endl);
-			time_base = (time_base_min * 60 + time_base_sec) * 1000;
-			LOG(Log << " clock was " << clock << endl);
-			clock = time_base;
-			LOG(Log << " clock assumed to be " << clock << endl);
-			//if (time_base != 0 && control_period_original == 0) control_period = -50;
+			_time_base = (time_base_min * 60 + time_base_sec) * 1000;
+			LOG(Log << " Clock was " << Clock << endl);
+			Clock = _time_base;
+			LOG(Log << " Clock assumed to be " << Clock << endl);
+			//if (_time_base != 0 && control_period_original == 0) control_period = -50;
 			if (control_period != 0) {
 				roll_over_check = true;
-				roll_over_increment = time_base + time_inc;
+				roll_over_increment = _time_base + time_inc;
 			}
 			time_inc *= 1000;
 			exact_time = 0;
@@ -7675,7 +7759,7 @@ void xboard()
 		if (!strcmp(command, "st")) {
 			sscanf(line, "st %d", &exact_time);
 			exact_time *= 1000;
-			time_base = 0; time_inc = 0;control_period = 0;
+			_time_base = 0; time_inc = 0;control_period = 0;
 			LOG(Log << " exact time set " << exact_time << endl);
 			//MaxTime = MaxTime / 2;
 #ifndef DISABLE_TIME
@@ -7685,6 +7769,7 @@ void xboard()
 		}
 		if (!strcmp(command, "sd")) {
 			sscanf(line, "sd %d", &MaxDepth);
+			++MaxDepth;
 			MaxTime = 1 << 25;
 			continue;
 		}
@@ -7693,13 +7778,13 @@ void xboard()
 			sscanf(line, "time %d", &clock_temp);
 			clock_temp *= 10;
 			if (roll_over_check) {
-				;			if (fabs((double)(clock_temp - clock) / roll_over_increment - 1.0) < .1 && fabs((double)(clock_temp - clock) / roll_over_increment - 1.0) < fabs((double)(clock_temp - clock) / time_inc - 1.0)) {
+				;			if (fabs((double)(clock_temp - Clock) / roll_over_increment - 1.0) < .1 && fabs((double)(clock_temp - Clock) / roll_over_increment - 1.0) < fabs((double)(clock_temp - Clock) / time_inc - 1.0)) {
 					LOG(Log << "roll over assumed at " << control_period << endl);
 					control_period = control_period_original;
 				}
 			}
-			clock = clock_temp;
-			LOG(Log << " clock " << clock << endl);
+			Clock = clock_temp;
+			LOG(Log << " Clock " << Clock << endl);
 			//MaxTime /= 30;
 			//MaxTime = MaxTime / 2;
 #ifndef DISABLE_TIME
@@ -8040,7 +8125,7 @@ Pos next_fen_pos(Pos p)
 	while (Board[++p] == OFF_BOARD);
 	return p;
 }
-void scan_fen(char *fen)
+void scan_fen(const char *fen)
 {
 	init_fen();
 	Pos p = a8;
@@ -8124,7 +8209,7 @@ int players_init[NUM_PIECE_SLOTS]
 	4,0,0,0,4,4,0,4,0,0,0,7,0,0,0,2,0,0,4,0,0,0,0,0,0,0,0,0,9,0,0,3,
 };
 
-char * test_fens[] = {
+const char * test_fens[] = {
 	"r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",
 	"8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",
 	"rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
@@ -8191,10 +8276,10 @@ void test_init()
 	Bxd5    1200
 
 	*/
-	//	scan_fen("8/3r2p1/pp1Bp1p1/1kP5/1n2K3/6R1/1P3P2/8 w - - 0 1");
+		scan_fen("8/3r2p1/pp1Bp1p1/1kP5/1n2K3/6R1/1P3P2/8 w - - 0 1");
 	/*   c6      2500
 	Rg6     2000
-	Ke5     1900 xy
+	Ke5     1900 xyz
 	Rg5     1700
 	Kd4     1200
 	Be5     1200
@@ -8203,11 +8288,11 @@ void test_init()
 	// 1985 - 1805 - 1855
 	//	scan_fen("8/4kb1p/2p3pP/1pP1P1P1/1P3K2/1B6/8/8 w - - 0 1");
 	/*   e6      2500 xy
-	Bd1     1800
+	Bd1     1800Quie
 	Bc2     1700
 	Bxf7    1600*/
-	scan_fen("b1R2nk1/5ppp/1p3n2/5N2/1b2p3/1P2BP2/q3BQPP/6K1 w - - 0 1");
-	/*  Bc5     2500
+	//scan_fen("b1R2nk1/5ppp/1p3n2/5N2/1b2p3/1P2BP2/q3BQPP/6K1 w - - 0 1");
+	/*  Bc5     2500 z
 	Nh6     2100
 	Bh6     1900
 	Qg3     1750 xy
