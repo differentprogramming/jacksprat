@@ -479,26 +479,35 @@ double PawnsValue;
 double PawnsPartValue;
 
 int EvalDirtyValue = 0;
+int EvalDirtyNegate = 1;
 double EvalDirtyCache[MAX_MOVES + MAX_MOVES_PER_PLY] = { DINF };
+
+bool EvalDirtySimple;
 
 inline bool EvalDirty()
 {
+	//return EvalDirtySimple;//
 	return EvalDirtyCache[EvalDirtyValue] == DINF;
 }
 void incEvalDirty()
 {
-	EvalDirtyCache[++EvalDirtyValue] == DINF;
+	//EvalDirtySimple = true;//
+	EvalDirtyCache[++EvalDirtyValue] = DINF;
 }
 void decEvalDirty()
 {
+	//EvalDirtySimple = true;
 	--EvalDirtyValue;
+	if (!EvalDirty()) PawnsValue = EvalDirtyCache[EvalDirtyValue]* EvalDirtyNegate;
 }
 void clearEvalDirty()
 {
-	EvalDirtyCache[EvalDirtyValue] = PawnsValue;
+//	EvalDirtySimple = false;
+	EvalDirtyCache[EvalDirtyValue] = PawnsValue*EvalDirtyNegate;
 }
 void resetEvalDirty()
 {
+//	EvalDirtySimple = true;
 	EvalDirtyValue = 0;
 	EvalDirtyCache[0] = DINF;
 }
@@ -564,9 +573,9 @@ const PieceSquareTable EmptySquareTable =
 	0,0,0,0,0,0,0,0,0,0,
 };
 
-#define SCALE_PST 
-#define PAWN_SCALE 
-#define END_PAWN_SCALE 
+#define SCALE_PST *2/5
+#define PAWN_SCALE *2/5
+#define END_PAWN_SCALE *2/5 
 #define HAIR_TABLES 
 #define HAIR_PAWNS
 
@@ -1810,10 +1819,10 @@ inline int simple_eval(Colors c)
 	return -simple_eval();
 }
 
+enum MoveFlags : char { NotCastling, CastleLeft, CastleRight, Extend };
 struct Move
 {
 	enum CheckForEnpassantEnum { CheckForEnpassant, DoEnpassant };
-	enum Castling : char { NotCastling, CastleLeft, CastleRight };
 
 	Pos from;
 	Pos to;
@@ -1822,7 +1831,7 @@ struct Move
 	PieceType became;  //promotion or transition
 	PieceSlotType slot_taken;
 	PieceType piece_taken;
-	Castling castling;
+	MoveFlags move_flags;
 	//	int see;
 	short bonus;
 	//	short perm_bonus;
@@ -1876,7 +1885,7 @@ struct Move
 		
 		if (!SideInEndgame(my_side)) {
 			int material_threat = MaterialSums[other_side][MAJOR_MINOR_COUNT];
-			if (castling == NotCastling) {
+			if (move_flags == NotCastling) {
 				if (initial == KING_NOT_MOVED || initial == ROOK_NOT_MOVED) {
 					switch (ways_can_castle(color(Board[from]))) {
 						case 1: 
@@ -1890,6 +1899,7 @@ struct Move
 				else if (became == KING || became == KING_CASTLED) bonus -= 15* material_threat >> 10;
 			}
 		}
+		//if (move_flags == Extend) bonus += 8;
 		//*/
 	}
 	void clear() { from = 0; }
@@ -1903,7 +1913,7 @@ struct Move
 	Move() :from(0) {}
 	//	Move(Pos f, Pos t) :from(f), to(t), initial(EMPTY), promotion(EMPTY) {}
 	Move(Pos f, Pos t PARAMLINE);
-	Move(Pos f, Pos t, Castling c PARAMLINE);
+	Move(Pos f, Pos t, MoveFlags c PARAMLINE);
 	Move(Pos f, Pos t, PieceType type PARAMLINE);
 
 	bool is_enpassant() { return to != taken_at; }
@@ -1928,7 +1938,8 @@ struct RelativeMove
 	Pos from_pos;
 	Pos to;
 	PieceType promotion;
-	RelativeMove(const Move &m) :from(m.from == 0 ? NO_SLOT : Board[m.from]), from_pos(m.from), to(m.to), promotion(m.became),
+	MoveFlags move_flags;
+	RelativeMove(const Move &m) :from(m.from == 0 ? NO_SLOT : Board[m.from]), from_pos(m.from), to(m.to), promotion(m.became),move_flags(m.move_flags),
 		slot_taken(m.slot_taken) {}
 	void operator = (const RelativeMove &m)
 	{
@@ -1937,6 +1948,7 @@ struct RelativeMove
 		from_pos = m.from_pos;
 		to = m.to;
 		promotion = m.promotion;
+		move_flags = m.move_flags;
 	}
 
 	void operator = (const Move &m)
@@ -1946,9 +1958,10 @@ struct RelativeMove
 		from = m.from == 0 ? NO_SLOT : Board[m.from];
 		to = m.to;
 		promotion = m.became;
+		move_flags = m.move_flags;
 	}
 	RelativeMove() :from(NO_SLOT) {}
-	RelativeMove(const RelativeMove &m) :from(m.from), from_pos(m.from_pos), to(m.to), promotion(m.promotion) {}
+	RelativeMove(const RelativeMove &m) :from(m.from), from_pos(m.from_pos), to(m.to), promotion(m.promotion),move_flags(m.move_flags) {}
 	bool operator == (const RelativeMove &m) const
 	{
 		return (from == NO_SLOT && m.from == NO_SLOT) || (from == m.from && from_pos == m.from_pos && to == m.to && slot_taken == m.slot_taken
@@ -2601,7 +2614,7 @@ Pos PinMoves[NUM_COLORS][64];
 
 const int * pawn_tables[NUM_COLORS] = { EndgamePawnSquareTableL,EndgamePawnSquareTableD };
 
-#define KP_SCALE .5
+#define KP_SCALE .3
 
 double eval_kp(Colors c, Colors o, Pos f)
 {
@@ -2840,7 +2853,7 @@ void calc_pawns()
 						//if (KP_END[oc] && __min(5, pr - 1) < ChebyshevDistance(pp + 10 * (pr - 1)*(c == LIGHT ? -1 : 1), Players.positions[KINGP + other_base]) - (PlySide() == oc ? 1 : 0))
 						//	PromotionTempo[(__min(4, pr - 2) << 1) + (PlySide() == oc ? 1 : 0)] = (Colors)c;//PawnsTemp[c] += QUEEN_VALUE-(82+30+90);
 						PawnsTemp[c] += //pawn_tables[c][pp] + 9;//
-							((7 - pr) * 40);
+							.25*((7 - pr) * 40);
 						if (LowestPassed[c] > pr) LowestPassed[c] = pr;//calculate nearest passed pawn for bonus for rook on other side of passed pawn
 					}
 				}
@@ -2936,13 +2949,13 @@ void calc_pawns()
 			EvalTemp[c] -= (danger+1)>>1;
 		*/
 #else
-			EvalTemp[c] -= 5*Safety((Colors)c,Players.positions[KINGP]);
+			EvalTemp[c] -= 2*Safety((Colors)c,Players.positions[KINGP]);
 #endif
 			//bonus for keeping two of rooks+queen
 			const int cq = count_slot(base + QUEENP);
 			const int cr = count_slot(base + ROOK1) + count_slot(base + ROOK2);
 			if (cq + cr > 1) {
-				EvalTemp[c] += (5 * cq + (cr << 1))*PAWN_VALUE >> 3;
+				EvalTemp[c] += (5 * cq + (cr << 1))*PAWN_VALUE/16;
 			}
 		}
 
@@ -2979,11 +2992,11 @@ void calc_pawns()
 					if (is_pawn_at((Pos)(pos - UpDir[c] + 1), (Colors)c)) ++outpost_count;
 					switch (outpost_count) {
 					case 1:
-						EvalTemp[c] += 10;//(80)*.02*MaterialMultiplier[c];
+						EvalTemp[c] += 10* .7;//(80)*.02*MaterialMultiplier[c];
 						break;
 					case 2:
-						if (r <= KNIGHT2) EvalTemp[c] += 16;//.04*(80)* MaterialMultiplier[c];
-						else EvalTemp[c] += 10;//.03*(80) * MaterialMultiplier[c];
+						if (r <= KNIGHT2) EvalTemp[c] += 16* .7;//.04*(80)* MaterialMultiplier[c];
+						else EvalTemp[c] += 10*.7;//.03*(80) * MaterialMultiplier[c];
 						break;
 					}
 				}
@@ -3005,8 +3018,8 @@ void calc_pawns()
 				if (PawnsRank[c][rook_col] == 9)
 					if (PawnsRank[oc][rook_col] == 9) EvalTemp[c] += 15;//open file
 					else EvalTemp[c] += 10; //semi open
-					if (RankCalc[c][rook_col] > LowestPassed[c]) EvalTemp[c] += 35;
-					else if (RankCalc[c][rook_pos] == 8)EvalTemp[c] += 20;//rook attacking last row
+					if (RankCalc[c][rook_col] > LowestPassed[c]) EvalTemp[c] += 35 * .7;
+					else if (RankCalc[c][rook_pos] == 8)EvalTemp[c] += 20 * .7;//rook attacking last row
 			}
 		}
 	}
@@ -3018,12 +3031,12 @@ void calc_pawns()
 		if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT] != MaterialSums[DARK][MAJOR_MINOR_COUNT]) {
 			if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT] > MaterialSums[DARK][MAJOR_MINOR_COUNT]) {
 				if (count_slot(LIGHT_ROOK1)+ count_slot(LIGHT_ROOK1) + count_slot(LIGHT_QUEENP)<2) {
-					EvalTemp[LIGHT] += 3 * 47 * CenterManhattanDistance[Players.positions[DARK_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
+					EvalTemp[LIGHT] += (3 * 47 * CenterManhattanDistance[Players.positions[DARK_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP])));
 				}
 			}
 			else
 				if (count_slot(DARK_ROOK1) + count_slot(DARK_ROOK1) + count_slot(DARK_QUEENP)<2) {
-					EvalTemp[DARK] += 3 * 47 * CenterManhattanDistance[Players.positions[LIGHT_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
+					EvalTemp[DARK] += (3 * 47 * CenterManhattanDistance[Players.positions[LIGHT_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP])));
 				}
 		}
 	}
@@ -3043,7 +3056,7 @@ void calc_pawns()
 					}
 				}
 			}
-			EvalTemp[kc] -= kp_tropism;
+			if (pawn_count>0) EvalTemp[kc] -= kp_tropism/ pawn_count;
 		}
 	}
 
@@ -3051,7 +3064,7 @@ void calc_pawns()
 
 	//if (PawnsDirty()) 
 		PawnsPartValue = PawnsTemp[DARK] - PawnsTemp[LIGHT];
-		PawnsValue = (PawnsPartValue + (EvalTemp[DARK] - EvalTemp[LIGHT]))*1.8;
+		PawnsValue = (PawnsPartValue + (EvalTemp[DARK] - EvalTemp[LIGHT]));
 		
 
 	if (PlySide() == LIGHT) PawnsValue = -PawnsValue;
@@ -3425,7 +3438,7 @@ initial(Players.pieces[Board[f]]),
 became((PieceType)ChangePieceOnMove[initial]),
 slot_taken(Board[t]),
 piece_taken(Players.pieces[slot_taken]),
-castling(NotCastling),
+move_flags(NotCastling),
 //see(0),
 bonus(SHORTINF)
 INITLINE
@@ -3438,14 +3451,14 @@ INITLINE
 }
 
 //assume that c is CastleLeft or CastleRight
-Move::Move(Pos f, Pos t, Castling c PARAMLINE) :from(f),
+Move::Move(Pos f, Pos t, MoveFlags c PARAMLINE) :from(f),
 to(t),
 taken_at(t),
 initial(Players.pieces[Board[f]]),
 became((PieceType)ChangePieceOnMove[initial]),
 slot_taken(NO_SLOT),
 piece_taken(EMPTY),
-castling(c),
+move_flags(c),
 //see(0),
 bonus(SHORTINF)
 INITLINE
@@ -3460,7 +3473,7 @@ initial(Players.pieces[Board[f]]),
 became(type),
 slot_taken(Board[t]),
 piece_taken(Players.pieces[slot_taken]),
-castling(NotCastling),
+move_flags(NotCastling),
 //see(0),
 bonus(SHORTINF)
 INITLINE
@@ -3477,7 +3490,7 @@ initial(Players.pieces[Board[f]]),
 became(ChangePieceOnMove[initial]),
 slot_taken(Board[enpassant_pos]),
 piece_taken(Players.pieces[Board[enpassant_pos]]),
-castling(NotCastling),
+move_flags(NotCastling),
 //see(0),
 bonus(SHORTINF)
 INITLINE
@@ -3493,21 +3506,21 @@ initial(Players.pieces[Board[f]]),
 became(ChangePieceOnMove[initial]),
 slot_taken(Board[t]),
 piece_taken(Players.pieces[slot_taken]),
-castling(NotCastling),
+move_flags(NotCastling),
 //see(0),
 bonus(SHORTINF)
 INITLINE
 {
 	if (initial == KING_NOT_MOVED && color(Board[f]) == LIGHT)
 	{
-		if (to == c1) castling = CastleLeft;
-		else if (to == g1) castling = CastleRight;
+		if (to == c1) move_flags = CastleLeft;
+		else if (to == g1) move_flags = CastleRight;
 		became = KING_CASTLED;
 	}
 	else if (initial == KING_NOT_MOVED && color(Board[f]) == DARK)
 	{
-		if (to == c8) castling = CastleLeft;
-		else if (to == g8) castling = CastleRight;
+		if (to == c8) move_flags = CastleLeft;
+		else if (to == g8) move_flags = CastleRight;
 		became = KING_CASTLED;
 	}
 	if (initial == PAWN || initial == PAWN_JUST_ADVANCED) {
@@ -3527,7 +3540,7 @@ Move::Move(const Move &m) :
 	became(m.became),
 	slot_taken(m.slot_taken),
 	piece_taken(m.piece_taken),
-	castling(m.castling),
+	move_flags(m.move_flags),
 	//see(m.see),
 	bonus(m.bonus)
 	//,hash(m.hash)
@@ -3542,7 +3555,7 @@ void Move::operator = (const Move &m)
 	became = m.became;
 	slot_taken = m.slot_taken;
 	piece_taken = m.piece_taken;
-	castling = m.castling;
+	move_flags = m.move_flags;
 	//see = m.see;
 	bonus = m.bonus;
 	//hash = m.hash;
@@ -3555,7 +3568,7 @@ initial(std::move(m.initial)),
 became(std::move(m.became)),
 slot_taken(std::move(m.slot_taken)),
 piece_taken(std::move(m.piece_taken)),
-castling(std::move(m.castling)),
+move_flags(std::move(m.move_flags)),
 //see(std::move(m.see)),
 bonus(std::move(m.bonus))
 //,hash(std::move(m.hash))
@@ -3605,7 +3618,7 @@ void Move::make()
 							//	}
 	sub_value(side, slot_moving);
 	sub_value(side, slot_taken);
-	switch (castling) {
+	switch (move_flags) {
 	case CastleLeft:
 		if (color(slot_moving) == LIGHT) {
 			sub_value(side, LIGHT_ROOK1);
@@ -3690,7 +3703,7 @@ void Move::unmake()
 	//Players.positions[slot_moving] = from;
 	add_value(side, slot_moving);
 	add_value(side, slot_taken);
-	switch (castling) {
+	switch (move_flags) {
 	case CastleLeft:
 		if (color(slot_moving) == LIGHT) {
 			sub_value(side, LIGHT_ROOK1);
@@ -4179,18 +4192,21 @@ struct HashMove
 	Pos from;
 	Pos to;
 	PieceType became;
+	MoveFlags move_flags;
 	HashMove() { clear(); }
-	HashMove(const Move & m) :from(m.from), to(m.to), became(m.became) {}
-	HashMove(const RelativeMove &m) :from(m.from_pos), to(m.to), became(m.promotion) {}
+	HashMove(const Move & m) :from(m.from), to(m.to), became(m.became), move_flags(m.move_flags){}
+	HashMove(const RelativeMove &m) :from(m.from_pos), to(m.to), became(m.promotion),move_flags(m.move_flags) {}
 	void operator = (const RelativeMove &m) {
 		from = m.from_pos;
 		to = m.to;
 		became = m.promotion;
+		move_flags = m.move_flags;
 	}
 	void operator = (const Move &m) {
 		from = m.from;
 		to = m.to;
 		became = m.became;
+		move_flags = m.move_flags;
 	}
 	void clear()
 	{
@@ -4396,11 +4412,16 @@ bool order_value(int &result, Colors c, Move &m, int depth)
 #define IID_NUM 3
 
 //#define CAP_SCALE(x,y) (((x)<<10)-(y))
-#define CAP_SCALE(x,y) ((int)(x)<<10)
+
+#define CAP_SCALE(x,y) (((int)(x)<<10)-((y)>>1))
+//#define CAP_SCALE(x,y) ((int)(x)<<10)
 bool ThreatenedExcluding(Colors o, Pos root_pos, PieceSlotType exclude);
 int SEE(Colors c, Pos root_pos, PieceSlotType exclude, int depth);
 //#define COUNTER(c,expanding,attacker,value) (depth<=IID_NUM?-SEE(c,expanding,attacker,INF):0)
-#define COUNTER(c,expanding,attacker,value) (-SEE(c,expanding,attacker,INF))
+//#define COUNTER(c,expanding,attacker,value) (ValuePerPiece[Players.pieces[Board[expanding]]]+ (ValuePerPiece[Players.pieces[Board[expanding]]]>=(value<<2)?0:SEE(c,expanding,attacker,INF)))
+
+//#define COUNTER(c,expanding,attacker,value) (ValuePerPiece[Players.pieces[Board[expanding]]]+SEE(c,expanding,attacker,INF)-square_value-positive_square_value_of_piece(other_color(c), Players.pieces[Board[expanding]], expanding))
+#define COUNTER(c,expanding,attacker,value) (ValuePerPiece[Players.pieces[Board[expanding]]]+SEE(c,expanding,attacker,INF))
 //#define COUNTER(c,expanding,attacker,value) (-SEE(c,expanding,attacker,1))
 //#define COUNTER(c,expanding,attacker,value) (ThreatenedExcluding(c,expanding,attacker)?-value:0)
 //#define COUNTER(c,expanding,attacker,value) 0
@@ -4411,6 +4432,12 @@ int SEE(Colors c, Pos root_pos, PieceSlotType exclude, int depth);
 Move m MOVE_PARAMS;\
 GENERATE_TO.push(m,((MVV_LVA)));\
 }
+
+#define SLIDE_CAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
+Move m MOVE_PARAMS; \
+GENERATE_TO.push(m,((MVV_LVA))); capture = &GENERATE_TO.back();\
+}
+
 
 /*
 #define CAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
@@ -4432,7 +4459,7 @@ GENERATE_TO.push(m,found?v:(v+(val<<10)+(MVV_LVA)));\
 #define CAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
 		Move m MOVE_PARAMS;\
 		GENERATE_TO.push(m,(val<<9)+(MVV_LVA));\
-	} 
+	}
 //*/
 #define NONCAPTURE_VALUATION(MOVE_PARAMS, MVV_LVA) { \
 		Move m MOVE_PARAMS;\
@@ -4441,7 +4468,7 @@ GENERATE_TO.push(m,found?v:(v+(val<<10)+(MVV_LVA)));\
 
 
 #define QUIET_VALUE (-KING_VALUE)
-
+//
 #define SLIDE(direction) \
 expanding = root_pos ;\
 do { \
@@ -4450,8 +4477,10 @@ do { \
 		NONCAPTURE_VALUATION((root_pos,expanding ATLINE),CAP_SCALE(QUIET_VALUE,square_value - positive_square_value_of_piece(c, piece_type, expanding) ));\
 		continue; \
 	}\
-	if (Board[expanding] != OFF_BOARD && color(Board[expanding]) != c) { \
-		CAPTURE_VALUATION((root_pos,expanding ATLINE),CAP_SCALE(ValuePerPiece[Players.pieces[Board[expanding]]]-COUNTER(c,expanding,attacker,value),value));\
+	if (Board[expanding] != OFF_BOARD) { \
+		if (color(Board[expanding]) != c){\
+			SLIDE_CAPTURE_VALUATION((root_pos,expanding ATLINE),CAP_SCALE(COUNTER(c,expanding,attacker,value),0));\
+		}else if (Players.pieces[Board[expanding]]==piece_type || Players.pieces[Board[expanding]]==QUEEN) opposite_found = true;\
 	} \
 	break; \
 } while (true)
@@ -4484,7 +4513,7 @@ do { \
 	if (Board[root_pos+direction] == NO_SLOT) { \
 		NONCAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(QUIET_VALUE,square_value - positive_square_value_of_piece(c, piece_type, root_pos+direction)))); \
 	} else if (Board[root_pos+direction] != OFF_BOARD && color(Board[root_pos+direction]) != c){ \
-		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]]-COUNTER(c,root_pos+direction,attacker,value),value))); \
+		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(COUNTER(c,root_pos+direction,attacker,value),value))); \
 	}
 
 #define QTPOINT(direction) \
@@ -4564,7 +4593,7 @@ int Enpassants = 0;
 			++Enpassants; \
 		}\
 	else if (Board[root_pos+direction] != NO_SLOT && Board[root_pos+direction] != OFF_BOARD && color(Board[root_pos+direction]) != c) \
-		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]],value))) 
+		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]],0))) 
 
 //#define PAWNQPOINT(direction,d2) \
 	if (Board[root_pos+direction] != NO_SLOT && Board[root_pos+direction] != OFF_BOARD && color(Board[root_pos+direction]) != c) \
@@ -4586,7 +4615,7 @@ int Enpassants = 0;
 
 #define QPOINT(direction) \
 	if (Board[root_pos+direction] != NO_SLOT && Board[root_pos+direction] != OFF_BOARD && color(Board[root_pos+direction]) != c) {\
-		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]]-COUNTER(c,root_pos+direction,attacker,value),value)));\
+		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(COUNTER(c,root_pos+direction,attacker,value),0)));\
 	}
 
 
@@ -4767,12 +4796,12 @@ void generate_quiet_king_moves(const Colors c, const Pos root_pos, PieceSlotType
 Move test_king_castle_moves(const Colors c, const Pos root_pos, const Pos target, const PieceType promotion)
 {
 	if (can_castle_left(c)) {
-		if (c == LIGHT) { if (target == c1)  return Move(e1, c1, Move::CastleLeft ATLINE); }
-		else { if (target == c8)  return Move(e8, c8, Move::CastleLeft ATLINE); }
+		if (c == LIGHT) { if (target == c1)  return Move(e1, c1,CastleLeft ATLINE); }
+		else { if (target == c8)  return Move(e8, c8, CastleLeft ATLINE); }
 	}
 	if (can_castle_right(c)) {
-		if (c == LIGHT) { if (target == g1) return Move(e1, g1, Move::CastleRight ATLINE); }
-		else { if (target == g8) return Move(e8, g8, Move::CastleRight ATLINE); }
+		if (c == LIGHT) { if (target == g1) return Move(e1, g1, CastleRight ATLINE); }
+		else { if (target == g8) return Move(e8, g8, CastleRight ATLINE); }
 	}
 	return test_king_moves(c, root_pos, target, promotion);
 }
@@ -4782,13 +4811,13 @@ int Castles = 0;
 void generate_king_castle_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	if (can_castle_left(c)) {
-		if (c == LIGHT) GENERATE_TO.push(Move(e1, c1, Move::CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
-		else GENERATE_TO.push(Move(e8, c8, Move::CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
+		if (c == LIGHT) GENERATE_TO.push(Move(e1, c1, CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
+		else GENERATE_TO.push(Move(e8, c8, CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
 		++Castles;
 	}
 	if (can_castle_right(c)) {
-		if (c == LIGHT) GENERATE_TO.push(Move(e1, g1, Move::CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
-		else GENERATE_TO.push(Move(e8, g8, Move::CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
+		if (c == LIGHT) GENERATE_TO.push(Move(e1, g1, CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
+		else GENERATE_TO.push(Move(e8, g8, CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
 		++Castles;
 	}
 	generate_king_moves(c, root_pos, attacker, val, depth);
@@ -4797,13 +4826,13 @@ void generate_king_castle_moves(const Colors c, const Pos root_pos, PieceSlotTyp
 void generate_quiet_king_castle_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	if (can_castle_left(c)) {
-		if (c == LIGHT) GENERATE_TO.push(Move(e1, c1, Move::CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
-		else GENERATE_TO.push(Move(e8, c8, Move::CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
+		if (c == LIGHT) GENERATE_TO.push(Move(e1, c1, CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
+		else GENERATE_TO.push(Move(e8, c8, CastleLeft ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
 		++Castles;
 	}
 	if (can_castle_right(c)) {
-		if (c == LIGHT) GENERATE_TO.push(Move(e1, g1, Move::CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
-		else GENERATE_TO.push(Move(e8, g8, Move::CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
+		if (c == LIGHT) GENERATE_TO.push(Move(e1, g1, CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
+		else GENERATE_TO.push(Move(e8, g8, CastleRight ATLINE), CAP_SCALE(KING_CASTLING_BONUS, 0));
 		++Castles;
 	}
 	generate_quiet_king_moves(c, root_pos, attacker, val, depth);
@@ -4900,6 +4929,7 @@ int mobility(PieceSlotType s)
 {
 	return CountMoveTable[Players.pieces[s]](color(s), Players.positions[s]);
 }
+//#define BATTERY_BONUS 40;
 
 void generate_queen_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
@@ -4907,14 +4937,23 @@ void generate_queen_moves(const Colors c, const Pos root_pos, PieceSlotType atta
 	const int square_value = positive_square_value_of_piece(c, piece_type, root_pos);
 	Pos expanding;
 	const int value = QUEEN_VALUE;
+	bool opposite_found=false;
+	Move *capture=nullptr;
 	SLIDE(-11);
+	SLIDE(11);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
+	opposite_found = false; capture = nullptr;
 	SLIDE(-10);
+	SLIDE(10);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
+	opposite_found = false; capture = nullptr;
 	SLIDE(-9);
+	SLIDE(9);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
+	opposite_found = false; capture = nullptr;
 	SLIDE(-1);
 	SLIDE(1);
-	SLIDE(9);
-	SLIDE(10);
-	SLIDE(11);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
 }
 void generate_quiet_queen_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
@@ -4922,7 +4961,7 @@ void generate_quiet_queen_moves(const Colors c, const Pos root_pos, PieceSlotTyp
 	const int square_value = positive_square_value_of_piece(c, piece_type, root_pos);
 	Pos expanding;
 	const int value = QUEEN_VALUE;
-	SLIDE(-11);
+	QTSLIDE(-11);
 	QTSLIDE(-10);
 	QTSLIDE(-9);
 	QTSLIDE(-1);
@@ -4948,10 +4987,15 @@ void generate_rook_moves(const Colors c, const Pos root_pos, PieceSlotType attac
 	const int square_value = positive_square_value_of_piece(c, piece_type, root_pos);
 	Pos expanding;
 	const int value = ROOK_VALUE;
-	SLIDE(-10);
+	bool opposite_found = false;
+	Move *capture = nullptr;
 	SLIDE(-1);
 	SLIDE(1);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
+	opposite_found = false; capture = nullptr;
 	SLIDE(10);
+	SLIDE(-10);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
 }
 void generate_quiet_rook_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
@@ -4975,16 +5019,22 @@ Move test_bishop_moves(const Colors c, const Pos root_pos, const Pos target, con
 	return Move();
 }
 
+
 void generate_bishop_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const PieceType piece_type = BISHOP;
 	const int square_value = positive_square_value_of_piece(c, piece_type, root_pos);
 	Pos expanding;
 	const int value = BISHOP_VALUE;
+	bool opposite_found = false;
+	Move *capture = nullptr;
 	SLIDE(-11);
+	SLIDE(11);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
+	opposite_found = false; capture = nullptr;
 	SLIDE(-9);
 	SLIDE(9);
-	SLIDE(11);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
 }
 
 void generate_quiet_bishop_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
@@ -5006,9 +5056,11 @@ do { \
 	if (Board[expanding] == NO_SLOT) { \
 		continue; \
 	}\
-	if (Board[expanding] != OFF_BOARD && color(Board[expanding]) != c){ \
-		GENERATE_TO.push(Move(root_pos,expanding ATLINE),CAP_SCALE(ValuePerPiece[Players.pieces[Board[expanding]]]-COUNTER(c,expanding,attacker,value),value));\
-	}\
+	if (Board[expanding] != OFF_BOARD) { \
+		if (color(Board[expanding]) != c){\
+			SLIDE_CAPTURE_VALUATION((root_pos,expanding ATLINE),CAP_SCALE(COUNTER(c,expanding,attacker,value),0));\
+		}else if (Players.pieces[Board[expanding]]==piece_type || Players.pieces[Board[expanding]]==QUEEN) opposite_found = true;\
+	} \
 	break; \
 } while (true)
 
@@ -5044,6 +5096,8 @@ void quiesent_generate_pawn_moves(const Colors c, const Pos root_pos, PieceSlotT
 void quiesent_generate_knight_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const int value = KNIGHT_VALUE;
+	const int square_value = positive_square_value_of_piece(c, KNIGHT, root_pos);
+
 	QPOINT(-21);
 	QPOINT(-19);
 	QPOINT(-12);
@@ -5058,6 +5112,7 @@ void quiesent_generate_knight_moves(const Colors c, const Pos root_pos, PieceSlo
 void quiesent_generate_king_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	const int value = KING_VALUE;
+	const int square_value = positive_square_value_of_piece(c, KING, root_pos);
 	QPOINT(-11);
 	QPOINT(-10);
 	QPOINT(-9);
@@ -5072,35 +5127,60 @@ void quiesent_generate_king_moves(const Colors c, const Pos root_pos, PieceSlotT
 void quiesent_generate_queen_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	Pos expanding;
+	PieceType piece_type = QUEEN;
 	const int value = QUEEN_VALUE;
+	const int square_value = positive_square_value_of_piece(c, QUEEN, root_pos);
+	bool opposite_found=false;
+	Move *capture=nullptr;
 	QSLIDE(-11);
-	QSLIDE(-10);
-	QSLIDE(-9);
-	QSLIDE(-1);
-	QSLIDE(1);
-	QSLIDE(9);
-	QSLIDE(10);
 	QSLIDE(11);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
+	opposite_found = false; capture = nullptr;
+	QSLIDE(-9);
+	QSLIDE(9);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
+	opposite_found = false; capture = nullptr;
+	QSLIDE(1);
+	QSLIDE(-1);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
+	opposite_found = false; capture = nullptr;
+	QSLIDE(10);
+	QSLIDE(-10);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
 }
 
 void quiesent_generate_rook_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	Pos expanding;
 	const int value = ROOK_VALUE;
+	PieceType piece_type = ROOK;
+	const int square_value = positive_square_value_of_piece(c, ROOK, root_pos);
+	bool opposite_found = false;
+	Move *capture = nullptr;
 	QSLIDE(-10);
+	QSLIDE(10);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
+	opposite_found = false; capture = nullptr;
 	QSLIDE(-1);
 	QSLIDE(1);
-	QSLIDE(10);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
 }
 
 void quiesent_generate_bishop_moves(const Colors c, const Pos root_pos, PieceSlotType attacker, int val, int depth)
 {
 	Pos expanding;
 	const int value = BISHOP_VALUE;
+	PieceType piece_type = ROOK;
+	const int square_value = positive_square_value_of_piece(c, BISHOP, root_pos);
+	bool opposite_found = false;
+	Move *capture = nullptr;
 	QSLIDE(-11);
+	QSLIDE(11);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
+	opposite_found = false; capture = nullptr;
 	QSLIDE(-9);
 	QSLIDE(9);
-	QSLIDE(11);
+	if (opposite_found && capture != nullptr) capture->move_flags = Extend;
 }
 
 typedef void GenMoveFn(const Colors, const Pos, PieceSlotType attacker, int val, int depth);
@@ -5203,6 +5283,7 @@ bool inc_ply()
 	PersistantValue = -PersistantValue;
 	EphemeralValue = -EphemeralValue;
 	PawnsValue = -PawnsValue;
+	EvalDirtyNegate = -EvalDirtyNegate;
 	set_PlySide(other_color(PlySide()));
 
 	return true;
@@ -5217,6 +5298,7 @@ bool dec_ply()
 	PersistantValue = -PersistantValue;
 	EphemeralValue = -EphemeralValue;
 	PawnsValue = -PawnsValue;
+	EvalDirtyNegate = -EvalDirtyNegate;
 	set_PlySide(other_color(PlySide()));
 
 	return true;
@@ -5429,7 +5511,7 @@ do { \
 			case BISHOP:\
 			{ \
 				Move m(expanding,root_pos ATLINE);\
-				MovesOrdered.push(m,CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos]]]-COUNTER(c,root_pos,Board[expanding],ValuePerPiece[Players.pieces[Board[expanding]]]),ValuePerPiece[Players.pieces[Board[expanding]]]));\
+				MovesOrdered.push(m,CAP_SCALE(COUNTER(c,root_pos,Board[expanding],ValuePerPiece[Players.pieces[Board[expanding]]]),0));\
 				stop = true;\
 			} \
 		}\
@@ -5451,7 +5533,7 @@ do { \
 			case ROOK_NOT_MOVED: case ROOK:\
 			{ \
 				Move m(expanding,root_pos ATLINE);\
-				MovesOrdered.push(m,CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos]]]-COUNTER(c,root_pos,Board[expanding],ValuePerPiece[Players.pieces[Board[expanding]]]),ValuePerPiece[Players.pieces[Board[expanding]]]));\
+				MovesOrdered.push(m,CAP_SCALE(COUNTER(c,root_pos,Board[expanding],ValuePerPiece[Players.pieces[Board[expanding]]]),ValuePerPiece[Players.pieces[Board[expanding]]]));\
 				stop = true;\
 			} \
 		}\
@@ -5460,7 +5542,7 @@ do { \
 
 #define REV_GEN_POS(direction,piece) \
 if (is_piece((Pos)(root_pos+direction)) && color(Board[root_pos+direction]) != c && ComparisonPiece[Players.pieces[Board[root_pos+direction]]]==piece) {\
-		CAPTURE_VALUATION((root_pos+direction, root_pos ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos]]]-COUNTER(c,root_pos,Board[root_pos+direction],ValuePerPiece[Players.pieces[Board[root_pos+direction]]]),ValuePerPiece[Players.pieces[Board[root_pos+direction]]])));\
+		CAPTURE_VALUATION((root_pos+direction, root_pos ATLINE),(CAP_SCALE(COUNTER(c,root_pos,Board[root_pos+direction],ValuePerPiece[Players.pieces[Board[root_pos+direction]]]),0)));\
 }
 
 #define REV_GEN_PAWN \
@@ -5665,14 +5747,12 @@ FIND_ATTACKER_HVSLIDE(10);
 
 if (found_queen != NO_SLOT) return found_queen;
 
-FIND_ATTACKER_POS(-11, KING);
-FIND_ATTACKER_POS(-10, KING);
-FIND_ATTACKER_POS(-9, KING);
-FIND_ATTACKER_POS(-1, KING);
-FIND_ATTACKER_POS(1, KING);
-FIND_ATTACKER_POS(9, KING);
-FIND_ATTACKER_POS(10, KING);
-FIND_ATTACKER_POS(11, KING);
+const PieceSlotType KingS = (PieceSlotType)(KINGP + base_by_color(other_color(c)));
+const Pos KingPos = Players.positions[KingS];
+switch (KingPos - root_pos)
+{
+case -11:case -10:case -9:case-1:case 1:case 9:case 10:case 11: return KingS;
+}
 
 return NO_SLOT;
 }
@@ -5721,8 +5801,22 @@ int see_u(Colors side, Pos root_pos, int just_captured, int depth)
 	if (depth == 0) return 0;
 	PieceSlotType least = LeastAttacker(side, root_pos);
 	if (least == NO_SLOT) return 0;
+	if ((least&UNCOLORED_SLOT_MASK) == KINGP) {
+		Board[Players.positions[least]] = NO_SLOT;
+		bool cant_take_with_king = LeastAttacker(other_color(side), root_pos)!=NO_SLOT;
+		Board[Players.positions[least]] = least;
+		if (cant_take_with_king) return 0;
+		return just_captured;
+	}
+//	const int at_value = positive_square_value_of_piece(other_color(side), Players.pieces[least], root_pos);
+//	const int from_value = positive_square_value_of_piece(other_color(side), Players.pieces[least], Players.positions[least]);
 	Board[Players.positions[least]] = NO_SLOT;
-	int v = just_captured - see_u(other_color(side), root_pos, ValuePerPiece[Players.pieces[least]], depth - 1);
+	int v = just_captured 
+		//+ from_value 
+		//- at_value 
+		- see_u(other_color(side), root_pos, ValuePerPiece[Players.pieces[least]]
+			//+ at_value
+			, depth - 1);
 	Board[Players.positions[least]] = least;
 	if (v < 0) return 0;
 	return v;
@@ -5731,7 +5825,10 @@ int see_u(Colors side, Pos root_pos, int just_captured, int depth)
 int SEE(Colors c, Pos root_pos, PieceSlotType exclude, int depth)
 {
 	Board[Players.positions[exclude]] = NO_SLOT;
-	int v = -see_u(c, root_pos, ValuePerPiece[Players.pieces[exclude]], depth);
+	//int at_value = positive_square_value_of_piece(c, Players.pieces[exclude], root_pos);
+	int v =//at_value 
+		-see_u(c, root_pos, ValuePerPiece[Players.pieces[exclude]]//+ at_value
+			, depth);
 	Board[Players.positions[exclude]] = exclude;
 	return v;
 }
@@ -5810,23 +5907,23 @@ int Safety(Colors c, Pos root_pos)
 bool Threatened(Colors c, Pos root_pos)
 {
 	int expanding;
+	REV_PAWN;
+	const PieceSlotType KingS = (PieceSlotType)(KINGP + base_by_color(other_color(c)));
+	const Pos KingPos = Players.positions[KingS];
+	switch (KingPos - root_pos)
+	{
+	case -11:case -10:case -9:case-1:case 1:case 9:case 10:case 11: return true;
+	}
+
 	REV_POS(-21, KNIGHT);
 	REV_POS(-19, KNIGHT);
 	REV_POS(-12, KNIGHT);
-	REV_POS(-11, KING);
-	REV_POS(-10, KING);
-	REV_POS(-9, KING);
 	REV_POS(-8, KNIGHT);
-	REV_POS(-1, KING);
-	REV_PAWN;
-	REV_POS(1, KING);
 	REV_POS(8, KNIGHT);
-	REV_POS(9, KING);
-	REV_POS(10, KING);
-	REV_POS(11, KING);
 	REV_POS(12, KNIGHT);
 	REV_POS(19, KNIGHT);
 	REV_POS(21, KNIGHT);
+
 	REV_DSLIDE(-11);
 	REV_HVSLIDE(-10);
 	REV_DSLIDE(-9);
@@ -5837,7 +5934,7 @@ bool Threatened(Colors c, Pos root_pos)
 	REV_DSLIDE(11);
 	return false;
 }
-
+/*
 bool GenThreat(int &i, Colors c, Pos root_pos, int val, int depth)
 {
 	int expanding;
@@ -5956,7 +6053,7 @@ bool GenThreat(int &i, Colors c, Pos root_pos, int val, int depth)
 	}
 	return false;
 }
-
+*/
 
 bool king_in_check(Colors c)
 {
@@ -6281,12 +6378,13 @@ CountMoveStruct &CounterMove(bool quiescent, RelativeMove &r)
 		)))];
 }
 
-bool EnableHistory;
+//bool EnableHistory;
 struct MoveGenerator
 {
 	enum State { Initial, Second, PositiveCaptures, DoCounterMove, Killers, AfterKillers, GeneratedMoves, BEFORE_IID, IID };
 	Move killer_moves[NUM_KILLERS + 3];
 	int num_killer;
+	bool EnableHistory;
 	int killer_iterator;
 	int capture_iterator;
 	bool initial_ok;
@@ -6372,6 +6470,7 @@ struct MoveGenerator
 			if (second_ok) {
 				if (!second_move.empty()) c = TestMove(PlySide(), Board[second_move.from], second_move.to, second_move.became);
 				if (!c.empty()) {
+					c.move_flags = second_move.move_flags;
 					killer_moves[num_killer++] = c;
 					c.make();
 					if (king_in_check(side)) {//illegal to make a move that leaves your king in check
@@ -6414,7 +6513,7 @@ struct MoveGenerator
 		case PositiveCaptures:
 			if (kind) *kind = state;
 			found = false;
-			//if (!quiescent)
+			if (EnableHistory)
 			while (MovesOrdered.find_best() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
 											//			while (!MovesOrdered.empty() //|| LazyGenMove(lazy, quiescent, side, killer_moves, num_killer)
 				) {
@@ -6459,7 +6558,7 @@ struct MoveGenerator
 			state = Killers;
 		case Killers:
 			//if (EnableHistory && (initial_ok || depth < IID_NUM + 2))
-			if (!quiescent) {
+			if (!quiescent && EnableHistory) {
 				if (kind) *kind = state;
 				RelativeMove *m;
 				c.clear();
@@ -6515,9 +6614,8 @@ struct MoveGenerator
 		case AfterKillers:
 #define HISTORY_HEURISTIC
 #ifdef HISTORY_HEURISTIC
-			//if (//initial_ok 
-			//	(!try_iid || depth < IID_NUM + 2) && EnableHistory) 
-			MovesOrdered.add_history(quiescent);
+			if (EnableHistory) 
+				MovesOrdered.add_history(quiescent);
 #endif
 
 			//			if (found || !MovesOrdered.empty()) 
@@ -6798,6 +6896,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 		HashMove *m = &n->get_move();
 		if (!m->empty()) m2 = TestMove(PlySide(), Board[m->from], m->to, m->became);
 		if (!m2.empty()) {
+			m2.move_flags = m->move_flags;
 			move_depth = n->get_move_depth();
 			inc_ply();
 			m2.make();
@@ -7024,12 +7123,18 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 		MoveGenerator::State best_move_type;
 
 		MoveGenerator &moves = MoveGenerators[CurrentPly];
-		EnableHistory = true;
+		moves.EnableHistory = true;
 		moves.init(d//in_check ? (__max(1, d)) : d
-			, m2, m3, last_move, val, alpha != beta - 1 && !SideInEndgame_for_null(other_color(my_color)) //&& CheckForEndgame
+			, m2, m3, last_move, val, alpha != beta - 1 && true//!SideInEndgame_for_null(other_color(my_color)) //&& CheckForEndgame
 																										  //||val>beta
 		);
-		g = -INF; a = alpha; /* save original alpha value */
+		if (d <= 0) {
+			g = val; a = __max(alpha, lower_val);
+		}
+		else {
+			g = -INF;
+			a = alpha; /* save original alpha value */
+		}
 		inc_ply();
 		int move_count = 0;
 		MoveGenerator::State move_type;
@@ -7056,20 +7161,21 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 			while ((g < beta) && (g<KING_VALUE || CurrentPly == 1) && -INF != (move_value = moves.next(c, &move_type, &iid_value))) {
 				int val1;
 				++num_moves;
-				if (a != alpha) EnableHistory = false;
 				if (move_type == MoveGenerator::IID) {
+//					if (a != alpha) 
+					if (beta != alpha+1)
+							moves.EnableHistory = false;
 
 					int iid_depth = d * 717 >> 10;
 					if (iid_depth > d - 3) iid_depth = d - 3;
 					else if (iid_depth < 1)iid_depth = 1;
 					if (move_depth >= iid_depth) {
-						EnableHistory = true;
+						moves.EnableHistory = true;
 						//if (move_depth > d-4) EnableHistory = true;
 						//else iid_depth = move_depth + 1;
 					}
-					if (d > IID_NUM && !EnableHistory
+					if (d > IID_NUM && !moves.EnableHistory
 						) {
-						EnableHistory = false;
 						bool in_iid_temp = InIID;
 						InIID = true;
 						moves.state = MoveGenerator::GeneratedMoves;
@@ -7079,6 +7185,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 							while (MovesOrdered.next_unmarked())
 							{
 								c = MovesOrdered.best();
+								if (c.empty()) continue;
 								c.make();
 								{
 									//		intptr_t h = (intptr_t)&HashTable[((int)(Hash.low) & HASH_MASK)];
@@ -7093,18 +7200,22 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 								}
 
 								const bool other_in_check = king_in_check(PlySide());
-								int val2 = -INF;
-								if (val1 != -INF) val2 = NegaScout(-val1 + 1, -val1, iid_depth, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, iid_depth, INF);
-								if (val2 > val1 || val2 == -INF) val2 = -NegaScout(-beta, -val1, iid_depth, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, iid_depth, INF);
-								if (val2 > val1) val1 = val2;
-								//								if (val1 > beta) {
-								//									val2 = -NegaScout(-beta, -beta+1, d-1, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, realdepth-1);
-								//									if (val2 > beta) {
-								//										val1 = val2;
-								//										goto register_move;
-								//									}
-								//									val1 = __max(val1, val2);
-								//								}
+								//int val2 = -INF;
+								//if (val1 != -INF) val2 = NegaScout(-val1 + 1, -val1, iid_depth, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, iid_depth, INF);
+								//if (val2 > val1 || val2 == -INF) val2 = -NegaScout(-beta, -val1, iid_depth, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, iid_depth, INF);
+								//if (val2 > val1) val1 = val2;
+								int val2 = -NegaScout(-beta, -a, iid_depth, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, iid_depth, INF);
+								
+								//if (val2 > beta) {
+								//	InIID=in_iid_temp;
+								//	val2 = -NegaScout(-beta, -beta+1, d-1, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, realdepth-1,extensions);
+								//   if (val2 > beta) {
+								//		val1 = val2;
+								//		goto register_move;
+								//	}
+								//	InIID = true;
+								//	val1 = __max(val1, val2);
+								//}
 								MovesOrdered.unmarked_value() = (val2 - val) << 10;
 								c.unmake();
 							}
@@ -7119,10 +7230,11 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 						}
 						InIID = in_iid_temp;
 						MovesOrdered.unmark();
+						moves.EnableHistory = false;
 					}
 					continue;
 				}
-				if (d <= 0 && (move_value <= 0)) {
+				if (d <= 0 && (move_value < 0)) {
 					c.unmake();
 					break;
 				}
@@ -7145,21 +7257,31 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 				++move_count;
 				//moves.next calls c.make()
 				int new_depth = d - 1;
-				if ((other_in_check || !(c.became == c.initial || is_pawn(c.became) || is_rook(c.initial) || is_king(c.initial)))) {
+
+				int lmr_dec = 0;   //middle
+				int delay_inc = 1; //
+
+
+				if (other_in_check  || !(c.became == c.initial || is_pawn(c.became) || is_rook(c.initial) || is_king(c.initial))) {
 					if (new_depth<realdepth - 1) new_depth = realdepth - 1;
-					//if (extensions < 1) {
+					//if (c.move_flags==Extend  && extensions < 1) {
 					//	++realdepth;
 					//	++extensions;
 					//}
-				}
-				else if (new_depth<realdepth - 2 && move_value > PAWN_VALUE << 10) {
-					if (move_value >(KNIGHT_VALUE - 2 * PAWN_VALUE) << 10) {
-						new_depth = realdepth - 1;
-					}
-					else if (new_depth < realdepth - 2)new_depth = realdepth - 2;
-				}
+				} else if (c.move_flags == Extend && new_depth < realdepth - 2) new_depth = realdepth - 2;
 
-				//				if (move_value >(ROOK_VALUE - 2 * PAWN_VALUE) << 10 && extensions < 3) {
+				//else if (new_depth<realdepth - 1 && move_value > PAWN_VALUE << 10 && move_value+val<beta_real) {
+				//	if (move_value >(KNIGHT_VALUE - 2 * PAWN_VALUE) << 10) {
+				//		new_depth = realdepth - 1;
+				//		if (move_value >(ROOK_VALUE - 2 * PAWN_VALUE) << 10 && extensions < 1) {
+				//			++realdepth;
+				//			++extensions;
+				//		}
+				//	}
+				//	else if (new_depth < realdepth - 2)new_depth = realdepth - 2;
+				//}
+
+				//if (move_value >(ROOK_VALUE - 2 * PAWN_VALUE) << 10 && extensions < 3) {
 				//					++realdepth;
 				//					++extensions;
 				//				}
@@ -7187,8 +7309,6 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 				//					continue;
 				//				}
 #ifdef LMR
-				int lmr_dec = 0;   //middle
-				int delay_inc = 1; //
 
 //				if (d >= MinDepth - 3) { //root
 //					lmr_dec = (MinDepth - 4) - d;
@@ -7210,7 +7330,7 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 				//				lmr_dec = 1;
 				//				delay_inc = 0;
 
-				if (!other_in_check
+				else if (!other_in_check
 					&& d>0 //&& d<MinDepth-2 
 					&& !in_check //&& move_type == MoveGenerator::GeneratedMoves //(iid_value >> 10 <= 0)  // || move_count>=3) 
 								 //&&  a == beta - 1
@@ -7233,10 +7353,10 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 										d > 3 && reduced + lmr_dec * 2 > 7) {
 										--new_depth;
 										++delay;
-										if (d > 4 && reduced + lmr_dec * 3 > 13) {
-											--new_depth;
-											++delay;
-										}
+										//if (d > 4 && reduced + lmr_dec * 3 > 13) {
+										//	--new_depth;
+										//	++delay;
+										//}
 									}
 								}
 							}
@@ -7248,11 +7368,11 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 								++reduced;
 								--new_depth;
 								delay += delay_inc;
-								if (//lmr_dec >= 0 && 
-									d > 2 && reduced + lmr_dec > 3) {
-									--new_depth;
+								//if (//lmr_dec >= 0 && 
+								//	d > 2 && reduced + lmr_dec > 3) {
+								//	--new_depth;
 									//									delay += delay_inc;
-								}
+								//}
 							}
 						}
 					}
@@ -7264,21 +7384,21 @@ int NegaScout(int alpha, int beta, int d, bool in_null, bool somewhere_in_null, 
 								++reduced;
 								--new_depth;
 								//++delay;
-								if (//lmr_dec >= 0 &&
-									d > 2 && reduced + lmr_dec > 3) {
-									--new_depth;
+								//if (//lmr_dec >= 0 &&
+								//	d > 2 && reduced + lmr_dec > 3) {
+								//	--new_depth;
 									//									delay += delay_inc;
-								}
+								//}
 							}
 						}
 						else {
 							//pv, capture
-							//							if (move_value <= 0 && move_count > 2) // && CheckForEndgame 
-							//							{
-							//								++reduced;
-							//								--new_depth;
-							//								++delay;
-							//							}
+							//if (move_value <= 0 && move_count > 2) // && CheckForEndgame 
+							//{
+							//	++reduced;
+							//	--new_depth;
+								//++delay;
+							//}
 						}
 					}
 				}//else if (other)
@@ -7956,6 +8076,7 @@ void think(int output)
 					if (!m->empty()) {
 						Move c = TestMove(PlySide(), Board[m->from], m->to, m->became);
 						if (!c.empty()) {
+							c.move_flags = m->move_flags;
 							pv[j + 1] = c;
 							pv_length = j + 2;
 							continue;
