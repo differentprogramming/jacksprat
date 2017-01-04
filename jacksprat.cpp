@@ -7280,7 +7280,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 				//moves.next calls c.make()
 				int new_depth = d - 1;
 
-				int lmr_dec = 0;   //middle
+				int lmr_dec = -2;   //middle
 				int delay_inc = 1; //
 				bool n_late = false;
 
@@ -7365,27 +7365,27 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 					&& !is_king(c.initial)
 					&& !(is_pawn(c.initial)))
 				{
-					if ((move_value <= 0&& move_count > 1) || move_count > 3) n_late = true;
+					if ((move_value <= 0&& move_count + lmr_dec> 1) || move_count + lmr_dec > 3) n_late = true;
 					if (a == beta - 1 //|| InIID
 						) {
 						if (c.slot_taken != NO_SLOT) {
 							//non pv, non capture
-							if (move_value <= 0 || move_count > 3) // && CheckForEndgame 
+							if (move_value <= 0 || move_count + lmr_dec > 3) // && CheckForEndgame 
 							{
 								++reduced;
 								--new_depth;
-								if (d > 2 && reduced + lmr_dec > 3) {
-									--new_depth;
-									if (//lmr_dec>=0 && 
-										d > 3 && reduced + lmr_dec * 2 > 7) {
-										--new_depth;
-										++delay;
-										if (d > 4 && reduced + lmr_dec * 3 > 13) {
-											--new_depth;
-											++delay;
-										}
-									}
-								}
+	//							if (d > 2 && reduced + lmr_dec > 3) {
+	//								--new_depth;
+	//								if (//lmr_dec>=0 && 
+	//									d > 3 && reduced + lmr_dec * 2 > 7) {
+	//									--new_depth;
+	//									++delay;
+	//									if (d > 4 && reduced + lmr_dec * 3 > 13) {
+	//										--new_depth;
+	//										++delay;
+	//									}
+	//								}
+	//							}
 							}
 						}
 						else {
@@ -7420,12 +7420,12 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 						}
 						else {
 							//pv, capture
-							if (move_value <= 0 && move_count > 2) // && CheckForEndgame 
-							{
-								++reduced;
-								--new_depth;
-								++delay;
-							}
+//							if (move_value <= 0 && move_count > 2) // && CheckForEndgame 
+//							{
+//								++reduced;
+//								--new_depth;
+//								++delay;
+//							}
 						}
 					}
 				}//else if (other)
@@ -8596,6 +8596,7 @@ int mainish()
 			MaxDepth = MAX_PLY;
 #endif
 			printf("Time %d\n", MaxTime);
+			Log << "Problem set at " << MaxTime << " ms" << endl;
 			fen_problem_set();
 			continue;
 		}
@@ -9030,6 +9031,7 @@ void fen_problem(const char *fen, const char *moves, const char *descr)
 {
 	Move answers[MAX_PROBLEM_MOVES];
 	cout << "Problem " << descr << endl;
+	Log << "Problem " << descr << endl;
 	scan_fen(fen);
 	int reader = 0;
 	int moves_read = 0;
@@ -9042,9 +9044,11 @@ void fen_problem(const char *fen, const char *moves, const char *descr)
 				move_buf[j + 1] = 0;
 			}
 			cout << "Move " << move_buf << " read as " << move_str(answers[i]) << endl;
+			Log << "Move " << move_buf << " read as " << move_str(answers[i]) << endl;
 		}
 		else {
 			cout << "failed to read move at " << moves + start << endl;
+			Log << "failed to read move at " << moves + start << endl;
 			char t;
 			cin>>t;
 			return;
@@ -9059,23 +9063,32 @@ void fen_problem(const char *fen, const char *moves, const char *descr)
 	for (int i = 0;i < moves_read;++i) {
 		if (pv[0] == answers[i]) {
 			cout << "Found answer! " << i + 1 << " = " << move_str(pv[0]) << endl;
+			Log << "Found answer! " << i + 1 << " = " << move_str(pv[0]) << endl;
 			++fen_correct;
 			found = true;
 			break;
 		}
 	}
-	if (!found) cout << "Move not in set "<< move_str(pv[0]) << endl;
+	if (!found) {
+		cout << "Move not in set " << move_str(pv[0]) << endl;
+		Log << "Move not in set " << move_str(pv[0]) << endl;
+	}
 	cout << "So far " << fen_correct << " out of " << fen_count << endl;
+	Log << "So far " << fen_correct << " out of " << fen_count << endl;
 }
 
+#define EASY_PROBLEMS
 void fen_problem_set()
 {
 	fen_count=0;
 	fen_correct=0;
 
-fen_problem("2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - -", "Qg6", "WAC.001");
-fen_problem("8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - -", "Rxb2","WAC.002");
-fen_problem("5rk1/1ppb3p/p1pb4/6q1/3P1p1r/2P1R2P/PP1BQ1P1/5RKN w - -","Rg3","WAC.003");
+#ifdef EASY_PROBLEMS
+	fen_problem("2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - -", "Qg6", "WAC.001");
+#endif
+	fen_problem("8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - -", "Rxb2","WAC.002");
+#ifdef EASY_PROBLEMS
+	fen_problem("5rk1/1ppb3p/p1pb4/6q1/3P1p1r/2P1R2P/PP1BQ1P1/5RKN w - -","Rg3","WAC.003");
 fen_problem("r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w - -","Qxh7+","WAC.004");
 fen_problem("5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - -","Qc4+", "WAC.005");
 fen_problem("7k/p7/1R5K/6r1/6p1/6P1/8/8 w - -","Rb7", "WAC.006");
@@ -9102,8 +9115,10 @@ fen_problem("3r2k1/1p1b1pp1/pq5p/8/3NR3/2PQ3P/PP3PP1/6K1 b - -","Bf5", "WAC.026"
 fen_problem("7k/pp4np/2p3p1/3pN1q1/3P4/Q7/1r3rPP/2R2RK1 w - -","Qf8+", "WAC.027");
 fen_problem("1r1r2k1/4pp1p/2p1b1p1/p3R3/RqBP4/4P3/1PQ2PPP/6K1 b - -","Qe1+", "WAC.028");
 fen_problem("r2q2k1/pp1rbppp/4pn2/2P5/1P3B2/6P1/P3QPBP/1R3RK1 w - -","c6", "WAC.029");
-fen_problem("1r3r2/4q1kp/b1pp2p1/5p2/pPn1N3/6P1/P3PPBP/2QRR1K1 w - -","Nxd6", "WAC.030");
-fen_problem("rb3qk1/pQ3ppp/4p3/3P4/8/1P3N2/1P3PPP/3R2K1 w - -","Qxa8 d6 dxe6 g3", "WAC.031");
+#endif
+	fen_problem("1r3r2/4q1kp/b1pp2p1/5p2/pPn1N3/6P1/P3PPBP/2QRR1K1 w - -","Nxd6", "WAC.030");
+#ifdef EASY_PROBLEMS
+	fen_problem("rb3qk1/pQ3ppp/4p3/3P4/8/1P3N2/1P3PPP/3R2K1 w - -","Qxa8 d6 dxe6 g3", "WAC.031");
 fen_problem("6k1/p4p1p/1p3np1/2q5/4p3/4P1N1/PP3PPP/3Q2K1 w - -","Qd8+", "WAC.032");
 fen_problem("8/p1q2pkp/2Pr2p1/8/P3Q3/6P1/5P1P/2R3K1 w - -","Qe5+ Qf4", "WAC.033");
 fen_problem("7k/1b1r2p1/p6p/1p2qN2/3bP3/3Q4/P5PP/1B1R3K b - -","Bg1", "WAC.034");
@@ -9118,17 +9133,23 @@ fen_problem("r1b1r1k1/pp1n1pbp/1qp3p1/3p4/1B1P4/Q3PN2/PP2BPPP/R4RK1 w - -","Ba5"
 fen_problem("r2q3k/p2P3p/1p3p2/3QP1r1/8/B7/P5PP/2R3K1 w - -","Be7 Qxa8", "WAC.043");
 fen_problem("3rb1k1/pq3pbp/4n1p1/3p4/2N5/2P2QB1/PP3PPP/1B1R2K1 b - -","dxc4", "WAC.044");
 fen_problem("7k/2p1b1pp/8/1p2P3/1P3r2/2P3Q1/1P5P/R4qBK b - -","Qxa1", "WAC.045");
-fen_problem("r1bqr1k1/pp1nb1p1/4p2p/3p1p2/3P4/P1N1PNP1/1PQ2PP1/3RKB1R w K -","Nb5", "WAC.046");
-fen_problem("r1b2rk1/pp2bppp/2n1pn2/q5B1/2BP4/2N2N2/PP2QPPP/2R2RK1 b - -","Nxd4", "WAC.047");
+#endif
+	fen_problem("r1bqr1k1/pp1nb1p1/4p2p/3p1p2/3P4/P1N1PNP1/1PQ2PP1/3RKB1R w K -","Nb5", "WAC.046");
+#ifdef EASY_PROBLEMS
+	fen_problem("r1b2rk1/pp2bppp/2n1pn2/q5B1/2BP4/2N2N2/PP2QPPP/2R2RK1 b - -","Nxd4", "WAC.047");
 fen_problem("1rbq1rk1/p1p1bppp/2p2n2/8/Q1BP4/2N5/PP3PPP/R1B2RK1 b - -","Rb4", "WAC.048");
-fen_problem("2b3k1/4rrpp/p2p4/2pP2RQ/1pP1Pp1N/1P3P1P/1q6/6RK w - -","Qxh7+", "WAC.049");
-fen_problem("k4r2/1R4pb/1pQp1n1p/3P4/5p1P/3P2P1/r1q1R2K/8 w - -","Rxb6+", "WAC.050");
+#endif
+	fen_problem("2b3k1/4rrpp/p2p4/2pP2RQ/1pP1Pp1N/1P3P1P/1q6/6RK w - -","Qxh7+", "WAC.049");
+#ifdef EASY_PROBLEMS
+	fen_problem("k4r2/1R4pb/1pQp1n1p/3P4/5p1P/3P2P1/r1q1R2K/8 w - -","Rxb6+", "WAC.050");
 fen_problem("r1bq1r2/pp4k1/4p2p/3pPp1Q/3N1R1P/2PB4/6P1/6K1 w - -","Rg4+", "WAC.051");
 fen_problem("r1k5/1p3q2/1Qpb4/3N1p2/5Pp1/3P2Pp/PPPK3P/4R3 w - -","Re7 c4", "WAC.052");
 fen_problem("6k1/6p1/p7/3Pn3/5p2/4rBqP/P4RP1/5QK1 b - -","Re1", "WAC.053");
 fen_problem("r3kr2/1pp4p/1p1p4/7q/4P1n1/2PP2Q1/PP4P1/R1BB2K1 b q -","Qh1+", "WAC.054");
-fen_problem("r3r1k1/pp1q1pp1/4b1p1/3p2B1/3Q1R2/8/PPP3PP/4R1K1 w - -","Qxg7+", "WAC.055");
-fen_problem("r1bqk2r/pppp1ppp/5n2/2b1n3/4P3/1BP3Q1/PP3PPP/RNB1K1NR b KQkq -","Bxf2+", "WAC.056");
+#endif
+	fen_problem("r3r1k1/pp1q1pp1/4b1p1/3p2B1/3Q1R2/8/PPP3PP/4R1K1 w - -","Qxg7+", "WAC.055");
+#ifdef EASY_PROBLEMS
+	fen_problem("r1bqk2r/pppp1ppp/5n2/2b1n3/4P3/1BP3Q1/PP3PPP/RNB1K1NR b KQkq -","Bxf2+", "WAC.056");
 fen_problem("r3q1kr/ppp5/3p2pQ/8/3PP1b1/5R2/PPP3P1/5RK1 w - -","Rf8+", "WAC.057");
 fen_problem("8/8/2R5/1p2qp1k/1P2r3/2PQ2P1/5K2/8 w - -","Qd1+", "WAC.058");
 fen_problem("r1b2rk1/2p1qnbp/p1pp2p1/5p2/2PQP3/1PN2N1P/PB3PP1/3R1RK1 w - -","Nd5", "WAC.059");
@@ -9143,8 +9164,10 @@ fen_problem("3r2k1/p2q4/1p4p1/3rRp1p/5P1P/6PK/P3R3/3Q4 w - -","Rxd5", "WAC.067")
 fen_problem("6k1/5ppp/1q6/2b5/8/2R1pPP1/1P2Q2P/7K w - -","Qxe3", "WAC.068");
 fen_problem("2k5/pppr4/4R3/4Q3/2pp2q1/8/PPP2PPP/6K1 w - -","f3 h3", "WAC.069");
 fen_problem("2kr3r/pppq1ppp/3p1n2/bQ2p3/1n1PP3/1PN1BN1P/1PP2PP1/2KR3R b - -","Na2+", "WAC.070");
-fen_problem("2kr3r/pp1q1ppp/5n2/1Nb5/2Pp1B2/7Q/P4PPP/1R3RK1 w - -","Nxa7+", "WAC.071");
-fen_problem("r3r1k1/pp1n1ppp/2p5/4Pb2/2B2P2/B1P5/P5PP/R2R2K1 w - -","e6", "WAC.072");
+#endif
+	fen_problem("2kr3r/pp1q1ppp/5n2/1Nb5/2Pp1B2/7Q/P4PPP/1R3RK1 w - -","Nxa7+", "WAC.071");
+#ifdef EASY_PROBLEMS
+	fen_problem("r3r1k1/pp1n1ppp/2p5/4Pb2/2B2P2/B1P5/P5PP/R2R2K1 w - -","e6", "WAC.072");
 fen_problem("r1q3rk/1ppbb1p1/4Np1p/p3pP2/P3P3/2N4R/1PP1Q1PP/3R2K1 w - -","Qd2", "WAC.073");
 fen_problem("5r1k/pp4pp/2p5/2b1P3/4Pq2/1PB1p3/P3Q1PP/3N2K1 b - -","Qf1+", "WAC.074");
 fen_problem("r3r1k1/pppq1ppp/8/8/1Q4n1/7P/PPP2PP1/RNB1R1K1 b - -","Qd6", "WAC.075");
@@ -9152,19 +9175,25 @@ fen_problem("r1b1qrk1/2p2ppp/pb1pnn2/1p2pNB1/3PP3/1BP5/PP2QPPP/RN1R2K1 w - -","B
 fen_problem("3r2k1/ppp2ppp/6q1/b4n2/3nQB2/2p5/P4PPP/RN3RK1 b - -","Ng3", "WAC.077");
 fen_problem("r2q3r/ppp2k2/4nbp1/5Q1p/2P1NB2/8/PP3P1P/3RR1K1 w - -","Ng5+", "WAC.078");
 fen_problem("r3k2r/pbp2pp1/3b1n2/1p6/3P3p/1B2N1Pq/PP1PQP1P/R1B2RK1 b kq -","Qxh2+", "WAC.079");
-fen_problem("r4rk1/p1B1bpp1/1p2pn1p/8/2PP4/3B1P2/qP2QP1P/3R1RK1 w - -","Ra1", "WAC.080");
-fen_problem("r4rk1/1bR1bppp/4pn2/1p2N3/1P6/P3P3/4BPPP/3R2K1 b - -","Bd6", "WAC.081");
+#endif
+	fen_problem("r4rk1/p1B1bpp1/1p2pn1p/8/2PP4/3B1P2/qP2QP1P/3R1RK1 w - -","Ra1", "WAC.080");
+#ifdef EASY_PROBLEMS
+	fen_problem("r4rk1/1bR1bppp/4pn2/1p2N3/1P6/P3P3/4BPPP/3R2K1 b - -","Bd6", "WAC.081");
 fen_problem("3rr1k1/pp3pp1/4b3/8/2P1B2R/6QP/P3q1P1/5R1K w - -","Bh7+", "WAC.082");
 fen_problem("3rr1k1/ppqbRppp/2p5/8/3Q1n2/2P3N1/PPB2PPP/3R2K1 w - -","Qxd7", "WAC.083");
 fen_problem("r2q1r1k/2p1b1pp/p1n5/1p1Q1bN1/4n3/1BP1B3/PP3PPP/R4RK1 w - -","Qg8+", "WAC.084");
 fen_problem("kr2R3/p4r2/2pq4/2N2p1p/3P2p1/Q5P1/5P1P/5BK1 w - -","Na6", "WAC.085");
 fen_problem("8/p7/1ppk1n2/5ppp/P1PP4/2P1K1P1/5N1P/8 b - -","Ng4+", "WAC.086");
-fen_problem("8/p3k1p1/4r3/2ppNpp1/PP1P4/2P3KP/5P2/8 b - -","Rxe5", "WAC.087");
-fen_problem("r6k/p1Q4p/2p1b1rq/4p3/B3P3/4P3/PPP3P1/4RRK1 b - -","Rxg2+", "WAC.088");
+#endif
+	fen_problem("8/p3k1p1/4r3/2ppNpp1/PP1P4/2P3KP/5P2/8 b - -","Rxe5", "WAC.087");
+#ifdef EASY_PROBLEMS
+	fen_problem("r6k/p1Q4p/2p1b1rq/4p3/B3P3/4P3/PPP3P1/4RRK1 b - -","Rxg2+", "WAC.088");
 fen_problem("1r3b1k/p4rpp/4pp2/3q4/2ppbPPQ/6RK/PP5P/2B1NR2 b - -","g5", "WAC.089");
 fen_problem("3qrrk1/1pp2pp1/1p2bn1p/5N2/2P5/P1P3B1/1P4PP/2Q1RRK1 w - -","Nxg7", "WAC.090");
-fen_problem("2qr2k1/4b1p1/2p2p1p/1pP1p3/p2nP3/PbQNB1PP/1P3PK1/4RB2 b - -","Be6", "WAC.091");
+#endif
+	fen_problem("2qr2k1/4b1p1/2p2p1p/1pP1p3/p2nP3/PbQNB1PP/1P3PK1/4RB2 b - -","Be6", "WAC.091");
 fen_problem("r4rk1/1p2ppbp/p2pbnp1/q7/3BPPP1/2N2B2/PPP4P/R2Q1RK1 b - -","Bxg4", "WAC.092");
+#ifdef EASY_PROBLEMS
 fen_problem("r1b1k1nr/pp3pQp/4pq2/3pn3/8/P1P5/2P2PPP/R1B1KBNR w KQkq -","Bh6", "WAC.093");
 fen_problem("8/k7/p7/3Qp2P/n1P5/3KP3/1q6/8 b - -","e4+", "WAC.094");
 fen_problem("2r5/1r6/4pNpk/3pP1qp/8/2P1QP2/5PK1/R7 w - -","Ng4+", "WAC.095");
@@ -9172,7 +9201,9 @@ fen_problem("r1b4k/ppp2Bb1/6Pp/3pP3/1qnP1p1Q/8/PPP3P1/1K1R3R w - -","Qd8+ b3", "
 fen_problem("6k1/5p2/p5np/4B3/3P4/1PP1q3/P3r1QP/6RK w - -","Qa8+", "WAC.097");
 fen_problem("1r3rk1/5pb1/p2p2p1/Q1n1q2p/1NP1P3/3p1P1B/PP1R3P/1K2R3 b - -","Nxe4", "WAC.098");
 fen_problem("r1bq1r1k/1pp1Np1p/p2p2pQ/4R3/n7/8/PPPP1PPP/R1B3K1 w - -","Rh5", "WAC.099");
+#endif
 fen_problem("8/k1b5/P4p2/1Pp2p1p/K1P2P1P/8/3B4/8 w - -","Be3 b6+", "WAC.100");
+#ifdef EASY_PROBLEMS
 fen_problem("5rk1/p5pp/8/8/2Pbp3/1P4P1/7P/4RN1K b - -","Bc3", "WAC.101");
 fen_problem("2Q2n2/2R4p/1p1qpp1k/8/3P3P/3B2P1/5PK1/r7 w - -","Qxf8+", "WAC.102");
 fen_problem("6k1/2pb1r1p/3p1PpQ/p1nPp3/1q2P3/2N2P2/PrB5/2K3RR w - -","Qxg6+", "WAC.103");
@@ -9190,9 +9221,13 @@ fen_problem("r1b1rnk1/1p4pp/p1p2p2/3pN2n/3P1PPq/2NBPR1P/PPQ5/2R3K1 w - -","Bxh7+
 fen_problem("4N2k/5rpp/1Q6/p3q3/8/P5P1/1P3P1P/5K2 w - -","Nd6", "WAC.115");
 fen_problem("r2r2k1/2p2ppp/p7/1p2P1n1/P6q/5P2/1PB1QP1P/R5RK b - -","Rd2", "WAC.116");
 fen_problem("3r1rk1/q4ppp/p1Rnp3/8/1p6/1N3P2/PP3QPP/3R2K1 b - -","Ne4", "WAC.117");
+#endif
 fen_problem("r5k1/pb2rpp1/1p6/2p4q/5R2/2PB2Q1/P1P3PP/5R1K w - -","Rh4", "WAC.118");
+#ifdef EASY_PROBLEMS
 fen_problem("r2qr1k1/p1p2ppp/2p5/2b5/4nPQ1/3B4/PPP3PP/R1B2R1K b - -","Qxd3", "WAC.119");
+#endif
 fen_problem("r4rk1/1bn2qnp/3p1B1Q/p2P1pP1/1pp5/5N1P/PPB2P2/2KR3R w - -","Rhg1 g6", "WAC.120");
+#ifdef EASY_PROBLEMS
 fen_problem("6k1/5p1p/2bP2pb/4p3/2P5/1p1pNPPP/1P1Q1BK1/1q6 b - -","Bxf3+", "WAC.121");
 fen_problem("1k6/ppp4p/1n2pq2/1N2Rb2/2P2Q2/8/P4KPP/3r1B2 b - -","Rxf1+", "WAC.122");
 fen_problem("6k1/1b2rp2/1p4p1/3P4/PQ4P1/2N2q2/5P2/3R2K1 b - -","Bxd5 Rc7 Re6", "WAC.123");
@@ -9203,7 +9238,10 @@ fen_problem("2k4r/1pr1n3/p1p1q2p/5pp1/3P1P2/P1P1P3/1R2Q1PP/1RB3K1 w - -","Rxb7",
 fen_problem("6rk/1pp2Qrp/3p1B2/1pb1p2R/3n1q2/3P4/PPP3PP/R6K w - -","Qg6", "WAC.128");
 fen_problem("3r1r1k/1b2b1p1/1p5p/2p1Pp2/q1B2P2/4P2P/1BR1Q2K/6R1 b - -","Bf3", "WAC.129");
 fen_problem("6k1/1pp3q1/5r2/1PPp4/3P1pP1/3Qn2P/3B4/4R1K1 b - -","Qh6 Qh8", "WAC.130");
+#endif
 fen_problem("2rq1bk1/p4p1p/1p4p1/3b4/3B1Q2/8/P4PpP/3RR1K1 w - -","Re8", "WAC.131");
+#ifdef EASY_PROBLEMS
+
 fen_problem("4r1k1/5bpp/2p5/3pr3/8/1B3pPq/PPR2P2/2R2QK1 b - -","Re1", "WAC.132");
 fen_problem("r1b1k2r/1pp1q2p/p1n3p1/3QPp2/8/1BP3B1/P5PP/3R1RK1 w kq -","Bh4", "WAC.133");
 fen_problem("3r2k1/p6p/2Q3p1/4q3/2P1p3/P3Pb2/1P3P1P/2K2BR1 b - -","Rd1+", "WAC.134");
@@ -9213,7 +9251,11 @@ fen_problem("3b1rk1/1bq3pp/5pn1/1p2rN2/2p1p3/2P1B2Q/1PB2PPP/R2R2K1 w - -","Rd7",
 fen_problem("r1bq3r/ppppR1p1/5n1k/3P4/6pP/3Q4/PP1N1PP1/5K1R w - -","h5", "WAC.138");
 fen_problem("rnb3kr/ppp2ppp/1b6/3q4/3pN3/Q4N2/PPP2KPP/R1B1R3 w - -","Nf6+", "WAC.139");
 fen_problem("r2b1rk1/pq4p1/4ppQP/3pB1p1/3P4/2R5/PP3PP1/5RK1 w - -","Bc7 Rc7", "WAC.140");
+
+#endif
 fen_problem("4r1k1/p1qr1p2/2pb1Bp1/1p5p/3P1n1R/1B3P2/PP3PK1/2Q4R w - -","Qxf4", "WAC.141");
+#ifdef EASY_PROBLEMS
+
 fen_problem("r2q3n/ppp2pk1/3p4/5Pr1/2NP1Qp1/2P2pP1/PP3K2/4R2R w - -","Re8 f6+", "WAC.142");
 fen_problem("5b2/pp2r1pk/2pp1pRp/4rP1N/2P1P3/1P4QP/P3q1P1/5R1K w - -","Rxh6+", "WAC.143");
 fen_problem("r2q1rk1/pp3ppp/2p2b2/8/B2pPPb1/7P/PPP1N1P1/R2Q1RK1 b - -","d3", "WAC.144");
@@ -9224,7 +9266,11 @@ fen_problem("2r1k3/6pr/p1nBP3/1p3p1p/2q5/2P5/P1R4P/K2Q2R1 w - -","Rxg7", "WAC.14
 fen_problem("6k1/6p1/2p4p/4Pp2/4b1qP/2Br4/1P2RQPK/8 b - -","Bxg2", "WAC.149");
 fen_problem("r3r1k1/5p2/pQ1b2pB/1p6/4p3/6P1/Pq2BP1P/2R3K1 b - -","Ba3 Be5 Bf8 e3", "WAC.150");
 fen_problem("8/3b2kp/4p1p1/pr1n4/N1N4P/1P4P1/1K3P2/3R4 w - -","Nc3", "WAC.151");
+
+#endif
 fen_problem("1br2rk1/1pqb1ppp/p3pn2/8/1P6/P1N1PN1P/1B3PP1/1QRR2K1 w - -","Ne4", "WAC.152");
+#ifdef EASY_PROBLEMS
+
 fen_problem("2r3k1/q4ppp/p3p3/pnNp4/2rP4/2P2P2/4R1PP/2R1Q1K1 b - -","Nxd4", "WAC.153");
 fen_problem("r1b2rk1/2p2ppp/p7/1p6/3P3q/1BP3bP/PP3QP1/RNB1R1K1 w - -","Qxf7+", "WAC.154");
 fen_problem("5bk1/1rQ4p/5pp1/2pP4/3n1PP1/7P/1q3BB1/4R1K1 w - -","d6", "WAC.155");
@@ -9235,11 +9281,17 @@ fen_problem("r1b2r2/5P1p/ppn3pk/2p1p1Nq/1bP1PQ2/3P4/PB4BP/1R3RK1 w - -","Ne6+", 
 fen_problem("qn1kr2r/1pRbb3/pP5p/P2pP1pP/3N1pQ1/3B4/3B1PP1/R5K1 w - -","Qxd7+", "WAC.160");
 fen_problem("3r3k/3r1P1p/pp1Nn3/2pp4/7Q/6R1/Pq4PP/5RK1 w - -","Qxd8+", "WAC.161");
 fen_problem("r3kbnr/p4ppp/2p1p3/8/Q1B3b1/2N1B3/PP3PqP/R3K2R w KQkq -","Bd5", "WAC.162");
+
+#endif
 fen_problem("5rk1/2p4p/2p4r/3P4/4p1b1/1Q2NqPp/PP3P1K/R4R2 b - -","Qg2+", "WAC.163");
+#ifdef EASY_PROBLEMS
 fen_problem("8/6pp/4p3/1p1n4/1NbkN1P1/P4P1P/1PR3K1/r7 w - -","Rxc4+", "WAC.164");
 fen_problem("1r5k/p1p3pp/8/8/4p3/P1P1R3/1P1Q1qr1/2KR4 w - -","Re2", "WAC.165");
 fen_problem("r3r1k1/5pp1/p1p4p/2Pp4/8/q1NQP1BP/5PP1/4K2R b K -","d4", "WAC.166");
+#endif
 fen_problem("7Q/ppp2q2/3p2k1/P2Ppr1N/1PP5/7R/5rP1/6K1 b - -","Rxg2+", "WAC.167");
+#ifdef EASY_PROBLEMS
+
 fen_problem("r3k2r/pb1q1p2/8/2p1pP2/4p1p1/B1P1Q1P1/P1P3K1/R4R2 b kq -","Qd2+", "WAC.168");
 fen_problem("5rk1/1pp3bp/3p2p1/2PPp3/1P2P3/2Q1B3/4q1PP/R5K1 b - -","Bh6", "WAC.169");
 fen_problem("5r1k/6Rp/1p2p3/p2pBp2/1qnP4/4P3/Q4PPP/6K1 w - -","Qxc4", "WAC.170");
@@ -9248,11 +9300,17 @@ fen_problem("5r1k/p5pp/8/1P1pq3/P1p2nR1/Q7/5BPP/6K1 b - -","Qe1+", "WAC.172");
 fen_problem("2r1b3/1pp1qrk1/p1n1P1p1/7R/2B1p3/4Q1P1/PP3PP1/3R2K1 w - -","Qh6+", "WAC.173");
 fen_problem("2r2rk1/6p1/p3pq1p/1p1b1p2/3P1n2/PP3N2/3N1PPP/1Q2RR1K b - -","Nxg2", "WAC.174");
 fen_problem("r5k1/pppb3p/2np1n2/8/3PqNpP/3Q2P1/PPP5/R4RK1 w - -","Nh5", "WAC.175");
+
+#endif
 fen_problem("r1bq3r/ppp2pk1/3p1pp1/8/2BbPQ2/2NP2P1/PPP4P/R4R1K b - -","Rxh2+", "WAC.176");
+#ifdef EASY_PROBLEMS
 fen_problem("r1b3r1/4qk2/1nn1p1p1/3pPp1P/p4P2/1p3BQN/PKPBN3/3R3R b - -","Qa3+", "WAC.177");
 fen_problem("3r2k1/p1rn1p1p/1p2pp2/6q1/3PQNP1/5P2/P1P4R/R5K1 w - -","Nxe6", "WAC.178");
 fen_problem("r1b2r1k/pp4pp/3p4/3B4/8/1QN3Pn/PP3q1P/R3R2K b - -","Qg1+", "WAC.179");
+#endif
 fen_problem("r1q2rk1/p3bppb/3p1n1p/2nPp3/1p2P1P1/6NP/PP2QPB1/R1BNK2R b KQ -","Nxd5", "WAC.180");
+#ifdef EASY_PROBLEMS
+
 fen_problem("r3k2r/2p2p2/p2p1n2/1p2p3/4P2p/1PPPPp1q/1P5P/R1N2QRK b kq -","Ng4", "WAC.181");
 fen_problem("r1b2rk1/ppqn1p1p/2n1p1p1/2b3N1/2N5/PP1BP3/1B3PPP/R2QK2R w KQ -","Qh5", "WAC.182");
 fen_problem("1r2k1r1/5p2/b3p3/1p2b1B1/3p3P/3B4/PP2KP2/2R3R1 w - -","Bf6", "WAC.183");
@@ -9266,19 +9324,29 @@ fen_problem("8/p2b2kp/1q1p2p1/1P1Pp3/4P3/3B2P1/P2Q3P/2Nn3K b - -","Bh3", "WAC.19
 fen_problem("2r1Rn1k/1p1q2pp/p7/5p2/3P4/1B4P1/P1P1QP1P/6K1 w - -","Qc4", "WAC.191");
 fen_problem("r3k3/ppp2Npp/4Bn2/2b5/1n1pp3/N4P2/PPP3qP/R2QKR2 b Qq -","Nd3+", "WAC.192");
 fen_problem("5bk1/p4ppp/Qp6/4B3/1P6/Pq2P1P1/2rr1P1P/R4RK1 b - -","Qxe3", "WAC.193");
+
+#endif
 fen_problem("5rk1/ppq2ppp/2p5/4bN2/4P3/6Q1/PPP2PPP/3R2K1 w - -","Nh6+", "WAC.194");
+#ifdef EASY_PROBLEMS
+
 fen_problem("3r1rk1/1p3p2/p3pnnp/2p3p1/2P2q2/1P5P/PB2QPPN/3RR1K1 w - -","g3", "WAC.195");
 fen_problem("rr4k1/p1pq2pp/Q1n1pn2/2bpp3/4P3/2PP1NN1/PP3PPP/R1B1K2R b KQ -","Nb4", "WAC.196");
 fen_problem("7k/1p4p1/7p/3P1n2/4Q3/2P2P2/PP3qRP/7K b - -","Qf1+", "WAC.197");
 fen_problem("2br2k1/ppp2p1p/4p1p1/4P2q/2P1Bn2/2Q5/PP3P1P/4R1RK b - -","Rd3", "WAC.198");
 fen_problem("r1br2k1/pp2nppp/2n5/1B1q4/Q7/4BN2/PP3PPP/2R2RK1 w - -","Bxc6 Rcd1 Rfd1", "WAC.199");
+
+#endif
 fen_problem("2rqrn1k/pb4pp/1p2pp2/n2P4/2P3N1/P2B2Q1/1B3PPP/2R1R1K1 w - -","Bxf6", "WAC.200");
+#ifdef EASY_PROBLEMS
 fen_problem("2b2r1k/4q2p/3p2pQ/2pBp3/8/6P1/1PP2P1P/R5K1 w - -","Ra7", "WAC.201");
 fen_problem("QR2rq1k/2p3p1/3p1pPp/8/4P3/8/P1r3PP/1R4K1 b - -","Rxa2", "WAC.202");
 fen_problem("r4rk1/5ppp/p3q1n1/2p2NQ1/4n3/P3P3/1B3PPP/1R3RK1 w - -","Qh6", "WAC.203");
+#endif
 fen_problem("r1b1qrk1/1p3ppp/p1p5/3Nb3/5N2/P7/1P4PQ/K1R1R3 w - -","Rxe5", "WAC.204");
+#ifdef EASY_PROBLEMS
 fen_problem("r3rnk1/1pq2bb1/p4p2/3p1Pp1/3B2P1/1NP4R/P1PQB3/2K4R w - -","Qxg5", "WAC.205");
 fen_problem("1Qq5/2P1p1kp/3r1pp1/8/8/7P/p4PP1/2R3K1 b - -","Rc6", "WAC.206");
+#endif
 fen_problem("r1bq2kr/p1pp1ppp/1pn1p3/4P3/2Pb2Q1/BR6/P4PPP/3K1BNR w - -","Qxg7+", "WAC.207");
 fen_problem("3r1bk1/ppq3pp/2p5/2P2Q1B/8/1P4P1/P6P/5RK1 w - -","Bf7+", "WAC.208");
 fen_problem("4kb1r/2q2p2/r2p4/pppBn1B1/P6P/6Q1/1PP5/2KRR3 w k -","Rxe5+", "WAC.209");
@@ -9286,62 +9354,102 @@ fen_problem("3r1rk1/pp1q1ppp/3pn3/2pN4/5PP1/P5PQ/1PP1B3/1K1R4 w - -","Rh1", "WAC
 fen_problem("r1bqrk2/pp1n1n1p/3p1p2/P1pP1P1Q/2PpP1NP/6R1/2PB4/4RBK1 w - -","Qxf7+", "WAC.211");
 fen_problem("rn1qr2Q/pbppk1p1/1p2pb2/4N3/3P4/2N5/PPP3PP/R4RK1 w - -","Qxg7+", "WAC.212");
 fen_problem("3r1r1k/1b4pp/ppn1p3/4Pp1R/Pn5P/3P4/4QP2/1qB1NKR1 w - -","Rxh7+", "WAC.213");
+#ifdef EASY_PROBLEMS
 fen_problem("r2r2k1/1p2qpp1/1np1p1p1/p3N3/2PPN3/bP5R/4QPPP/4R1K1 w - -","Ng5", "WAC.214");
 fen_problem("3r2k1/pb1q1pp1/1p2pb1p/8/3N4/P2QB3/1P3PPP/1Br1R1K1 w - -","Qh7+", "WAC.215");
 fen_problem("r2qr1k1/1b1nbppp/p3pn2/1p1pN3/3P1B2/2PB1N2/PP2QPPP/R4RK1 w - -","Nxf7 a4", "WAC.216");
+#endif
 fen_problem("r3kb1r/1pp3p1/p3bp1p/5q2/3QN3/1P6/PBP3P1/3RR1K1 w kq -","Qd7+", "WAC.217");
+#ifdef EASY_PROBLEMS
+
 fen_problem("6k1/pp5p/2p3q1/6BP/2nPr1Q1/8/PP3R1K/8 w - -","Bh6", "WAC.218");
 fen_problem("7k/p4q1p/1pb5/2p5/4B2Q/2P1B3/P6P/7K b - -","Qf1+", "WAC.219");
 fen_problem("3rr1k1/ppp2ppp/8/5Q2/4n3/1B5R/PPP1qPP1/5RK1 b - -","Qxf1+", "WAC.220");
+
+#endif
 fen_problem("r3k3/P5bp/2N1bp2/4p3/2p5/6NP/1PP2PP1/3R2K1 w q -","Rd8+", "WAC.221");
 fen_problem("2r1r2k/1q3ppp/p2Rp3/2p1P3/6QB/p3P3/bP3PPP/3R2K1 w - -","Bf6", "WAC.222");
+#ifdef EASY_PROBLEMS
+
 fen_problem("r1bqk2r/pp3ppp/5n2/8/1b1npB2/2N5/PP1Q2PP/1K2RBNR w kq -","Nxe4", "WAC.223");
 fen_problem("5rk1/p1q3pp/1p1r4/2p1pp1Q/1PPn1P2/3B3P/P2R2P1/3R2K1 b - -","Rh6 e4", "WAC.224");
 fen_problem("4R3/4q1kp/6p1/1Q3b2/1P1b1P2/6KP/8/8 b - -","Qh4+", "WAC.225");
 fen_problem("2b2rk1/p1p4p/2p1p1p1/br2N1Q1/1p2q3/8/PB3PPP/3R1RK1 w - -","Nf7", "WAC.226");
 fen_problem("2k1rb1r/ppp3pp/2np1q2/5b2/2B2P2/2P1BQ2/PP1N1P1P/2KR3R b - -","d5", "WAC.227");
+
+#endif
 fen_problem("r4rk1/1bq1bp1p/4p1p1/p2p4/3BnP2/1N1B3R/PPP3PP/R2Q2K1 w - -","Bxe4", "WAC.228");
 fen_problem("8/8/8/1p5r/p1p1k1pN/P2pBpP1/1P1K1P2/8 b - -","Rxh4 b4", "WAC.229");
 fen_problem("2b5/1r6/2kBp1p1/p2pP1P1/2pP4/1pP3K1/1R3P2/8 b - -","Rb4", "WAC.230");
+#ifdef EASY_PROBLEMS
 fen_problem("r4rk1/1b1nqp1p/p5p1/1p2PQ2/2p5/5N2/PP3PPP/R1BR2K1 w - -","Bg5", "WAC.231");
+#endif
 fen_problem("1R2rq1k/2p3p1/Q2p1pPp/8/4P3/8/P1r3PP/1R4K1 w - -","Qb5 Rxe8", "WAC.232");
+#ifdef EASY_PROBLEMS
+
 fen_problem("5rk1/p1p2r1p/2pp2p1/4p3/PPPnP3/3Pq1P1/1Q1R1R1P/4NK2 b - -","Nb3", "WAC.233");
 fen_problem("2kr1r2/p6p/5Pp1/2p5/1qp2Q1P/7R/PP6/1KR5 w - -","Rb3", "WAC.234");
 fen_problem("5r2/1p1RRrk1/4Qq1p/1PP3p1/8/4B3/1b3P1P/6K1 w - -","Qe4 Qxf7+ Rxf7+", "WAC.235");
 fen_problem("1R6/p5pk/4p2p/4P3/8/2r3qP/P3R1b1/4Q1K1 b - -","Rc1", "WAC.236");
+
+#endif
 fen_problem("r5k1/pQp2qpp/8/4pbN1/3P4/6P1/PPr4P/1K1R3R b - -","Rc1+", "WAC.237");
 fen_problem("1k1r4/pp1r1pp1/4n1p1/2R5/2Pp1qP1/3P2QP/P4PB1/1R4K1 w - -","Bxb7", "WAC.238");
+#ifdef EASY_PROBLEMS
 fen_problem("8/6k1/5pp1/Q6p/5P2/6PK/P4q1P/8 b - -","Qf1+", "WAC.239");
 fen_problem("2b4k/p1b2p2/2p2q2/3p1PNp/3P2R1/3B4/P1Q2PKP/4r3 w - -","Qxc6", "WAC.240");
+#endif
 fen_problem("2rq1rk1/pp3ppp/2n2b2/4NR2/3P4/PB5Q/1P4PP/3R2K1 w - -","Qxh7+", "WAC.241");
+#ifdef EASY_PROBLEMS
 fen_problem("r1b1r1k1/pp1nqp2/2p1p1pp/8/4N3/P1Q1P3/1P3PPP/1BRR2K1 w - -","Rxd7", "WAC.242");
+#endif
 fen_problem("1r3r1k/3p4/1p1Nn1R1/4Pp1q/pP3P1p/P7/5Q1P/6RK w - -","Qe2", "WAC.243");
+#ifdef EASY_PROBLEMS
 fen_problem("r6r/pp3ppp/3k1b2/2pb4/B4Pq1/2P1Q3/P5PP/1RBR2K1 w - -","Qxc5+", "WAC.244");
+#endif
 fen_problem("4rrn1/ppq3bk/3pPnpp/2p5/2PB4/2NQ1RPB/PP5P/5R1K w - -","Qxg6+", "WAC.245");
+#ifdef EASY_PROBLEMS
 fen_problem("6R1/4qp1p/ppr1n1pk/8/1P2P1QP/6N1/P4PP1/6K1 w - -","Qh5+", "WAC.246");
+#endif
 fen_problem("2k1r3/1p2Bq2/p2Qp3/Pb1p1p1P/2pP1P2/2P5/2P2KP1/1R6 w - -","Rxb5", "WAC.247");
+#ifdef EASY_PROBLEMS
+
 fen_problem("5r1k/1p4pp/3q4/3Pp1R1/8/8/PP4PP/4Q1K1 b - -","Qc5+", "WAC.248");
 fen_problem("r4rk1/pbq2pp1/1ppbpn1p/8/2PP4/1P1Q1N2/PBB2PPP/R3R1K1 w - -","c5 d5", "WAC.249");
 fen_problem("1b5k/7P/p1p2np1/2P2p2/PP3P2/4RQ1R/q2r3P/6K1 w - -","Re8+", "WAC.250");
+
+#endif
 fen_problem("k7/p4p2/P1q1b1p1/3p3p/3Q4/7P/5PP1/1R4K1 w - -","Qe5 Qf4", "WAC.251");
 fen_problem("1rb1r1k1/p1p2ppp/5n2/2pP4/5P2/2QB4/qNP3PP/2KRB2R b - -","Bg4 Re2", "WAC.252");
+#ifdef EASY_PROBLEMS
 fen_problem("k5r1/p4b2/2P5/5p2/3P1P2/4QBrq/P5P1/4R1K1 w - -","Qe8+", "WAC.253");
 fen_problem("r6k/pp3p1p/2p1bp1q/b3p3/4Pnr1/2PP2NP/PP1Q1PPN/R2B2RK b - -","Nxh3", "WAC.254");
 fen_problem("3r3r/p4pk1/5Rp1/3q4/1p1P2RQ/5N2/P1P4P/2b4K w - -","Rfxg6+", "WAC.255");
+#endif
 fen_problem("3r1rk1/1pb1qp1p/2p3p1/p7/P2Np2R/1P5P/1BP2PP1/3Q1BK1 w - -","Nf5", "WAC.256");
+#ifdef EASY_PROBLEMS
 fen_problem("4r1k1/pq3p1p/2p1r1p1/2Q1p3/3nN1P1/1P6/P1P2P1P/3RR1K1 w - -","Rxd4", "WAC.257");
 fen_problem("r3brkn/1p5p/2p2Ppq/2Pp3B/3Pp2Q/4P1R1/6PP/5R1K w - -","Bxg6", "WAC.258");
 fen_problem("r1bq1rk1/ppp2ppp/2np4/2bN1PN1/2B1P3/3p4/PPP2nPP/R1BQ1K1R w - -","Qh5", "WAC.259");
+#endif
 fen_problem("2r2b1r/p1Nk2pp/3p1p2/N2Qn3/4P3/q6P/P4PP1/1R3K1R w - -","Qe6+", "WAC.260");
 fen_problem("r5k1/1bp3pp/p2p4/1p6/5p2/1PBP1nqP/1PP3Q1/R4R1K b - -","Nd4", "WAC.261");
+#ifdef EASY_PROBLEMS
 fen_problem("6k1/p1B1b2p/2b3r1/2p5/4p3/1PP1N1Pq/P2R1P2/3Q2K1 b - -","Rh6", "WAC.262");
+#endif
 fen_problem("rnbqr2k/pppp1Qpp/8/b2NN3/2B1n3/8/PPPP1PPP/R1B1K2R w KQ -","Qg8+", "WAC.263");
+#ifdef EASY_PROBLEMS
 fen_problem("r2r2k1/1R2qp2/p5pp/2P5/b1PN1b2/P7/1Q3PPP/1B1R2K1 b - -","Qe5 Rab8", "WAC.264");
+#endif
 fen_problem("2r1k2r/2pn1pp1/1p3n1p/p3PP2/4q2B/P1P5/2Q1N1PP/R4RK1 w k -","exf6", "WAC.265");
 fen_problem("r3q2r/2p1k1p1/p5p1/1p2Nb2/1P2nB2/P7/2PNQbPP/R2R3K b - -","Rxh2+", "WAC.266");
+#ifdef EASY_PROBLEMS
 fen_problem("2r1kb1r/pp3ppp/2n1b3/1q1N2B1/1P2Q3/8/P4PPP/3RK1NR w Kk -","Nc7+", "WAC.267");
 fen_problem("2r3kr/ppp2n1p/7B/5q1N/1bp5/2Pp4/PP2RPPP/R2Q2K1 w - -","Re8+", "WAC.268");
+#endif
 fen_problem("2kr2nr/pp1n1ppp/2p1p3/q7/1b1P1B2/P1N2Q1P/1PP1BPP1/R3K2R w KQ -","axb4", "WAC.269");
+#ifdef EASY_PROBLEMS
+
 fen_problem("2r1r1k1/pp1q1ppp/3p1b2/3P4/3Q4/5N2/PP2RPPP/4R1K1 w - -","Qg4", "WAC.270");
 fen_problem("2kr4/ppp3Pp/4RP1B/2r5/5P2/1P6/P2p4/3K4 w - -","Rd6", "WAC.271");
 fen_problem("nrq4r/2k1p3/1p1pPnp1/pRpP1p2/P1P2P2/2P1BB2/1R2Q1P1/6K1 w - -","Bxc5", "WAC.272");
@@ -9363,16 +9471,24 @@ fen_problem("rn3k1r/pp2bBpp/2p2n2/q5N1/3P4/1P6/P1P3PP/R1BQ1RK1 w - -","Qg4 Qh5",
 fen_problem("r1b2rk1/p4ppp/1p1Qp3/4P2N/1P6/8/P3qPPP/3R1RK1 w - -","Nf6+", "WAC.288");
 fen_problem("2r3k1/5p1p/p3q1p1/2n3P1/1p1QP2P/1P4N1/PK6/2R5 b - -","Qe5", "WAC.289");
 fen_problem("2k2r2/2p5/1pq5/p1p1n3/P1P2n1B/1R4Pp/2QR4/6K1 b - -","Ne2+", "WAC.290");
+
+#endif
 fen_problem("5r1k/3b2p1/p6p/1pRpR3/1P1P2q1/P4pP1/5QnP/1B4K1 w - -","h3", "WAC.291");
+#ifdef EASY_PROBLEMS
 fen_problem("4r3/1Q1qk2p/p4pp1/3Pb3/P7/6PP/5P2/4R1K1 w - -","d6+", "WAC.292");
+#endif
 fen_problem("1nbq1r1k/3rbp1p/p1p1pp1Q/1p6/P1pPN3/5NP1/1P2PPBP/R4RK1 w - -","Nfg5", "WAC.293");
+#ifdef EASY_PROBLEMS
 fen_problem("3r3k/1r3p1p/p1pB1p2/8/p1qNP1Q1/P6P/1P4P1/3R3K w - -","Bf8 Nf5 Qf4", "WAC.294");
 fen_problem("4r3/p4r1p/R1p2pp1/1p1bk3/4pNPP/2P1K3/2P2P2/3R4 w - -","Rxd5+", "WAC.295");
+#endif
 fen_problem("3r4/1p2k2p/p1b1p1p1/4Q1Pn/2B3KP/4pP2/PP2R1N1/6q1 b - -","Rd4+ Rf8", "WAC.296");
 fen_problem("3r1rk1/p3qp1p/2bb2p1/2p5/3P4/1P6/PBQN1PPP/2R2RK1 b - -","Bxg2 Bxh2+", "WAC.297");
+#ifdef EASY_PROBLEMS
 fen_problem("3Q4/p3b1k1/2p2rPp/2q5/4B3/P2P4/7P/6RK w - -","Qh8+", "WAC.298");
 fen_problem("1n2rr2/1pk3pp/pNn2p2/2N1p3/8/6P1/PP2PPKP/2RR4 w - -","Nca4", "WAC.299");
 fen_problem("b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - -","g6", "WAC.300");
+#endif
 }
 void test_init()
 {
