@@ -6972,7 +6972,7 @@ inline bool close_to_mate(int score)
 //#define LMR
 #define NULL_MOVE
 //#define SIMPLE_EVAL
-//#define SMART_EVAL
+#define SMART_EVAL
 
 
 //#define IGNORE_TT
