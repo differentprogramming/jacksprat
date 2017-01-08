@@ -1701,8 +1701,10 @@ void init_direction_tables()
 
 	for (int i = 0;i <= h1;++i) {
 		if (SquareToRowIndex[i] == 0) continue;
+		if (SquareToColIndex[i] == 0) continue;
 		for (int j = 0;j <= h1;++j) {
 			if (SquareToRowIndex[j] == 0) continue;
+			if (SquareToColIndex[j] == 0) continue;
 			if (SquareToColIndex[i] != 0 && SquareToColIndex[i] == SquareToColIndex[j]) {
 				if (j < i) RookDirection[i][j] = QueenDirection[i][j] = -10;
 				else if (j>i)  RookDirection[i][j] = QueenDirection[i][j] = 10;
@@ -1712,22 +1714,22 @@ void init_direction_tables()
 				else if (j>i)  RookDirection[i][j] = QueenDirection[i][j] = 1;
 			}
 			if (SquareToDiagLeftIndex[i] != 0 && SquareToDiagLeftIndex[i] == SquareToDiagLeftIndex[j]) {
-				if (j < i) RookDirection[i][j] = QueenDirection[i][j] = -11;
-				else if (j>i)  RookDirection[i][j] = QueenDirection[i][j] = 11;
+				if (j < i) BishopDirection[i][j] = QueenDirection[i][j] = -11;
+				else if (j>i)  BishopDirection[i][j] = QueenDirection[i][j] = 11;
 			}
 			if (SquareToDiagRightIndex[i] != 0 && SquareToDiagRightIndex[i] == SquareToDiagRightIndex[j]) {
-				if (j < i) RookDirection[i][j] = QueenDirection[i][j] = -9;
-				else if (j>i)  RookDirection[i][j] = QueenDirection[i][j] = 9;
+				if (j < i) BishopDirection[i][j] = QueenDirection[i][j] = -9;
+				else if (j>i)  BishopDirection[i][j] = QueenDirection[i][j] = 9;
 			}
 			if (abs(SquareToRowIndex[i] - SquareToRowIndex[j]) <= 1
 				&& abs(SquareToColIndex[i] - SquareToColIndex[j]) <= 1
 				&& i != j) {
 				KingDirection[i][j] = j - i;
 			}
-			if ((abs(SquareToRowIndex[i] - SquareToRowIndex[j]) == 3
-				&& abs(SquareToColIndex[i] - SquareToColIndex[j]) == 2)
-				|| (abs(SquareToRowIndex[i] - SquareToRowIndex[j]) == 2
-					&& abs(SquareToColIndex[i] - SquareToColIndex[j]) == 3)) {
+			if ((abs(SquareToRowIndex[i] - SquareToRowIndex[j]) == 2
+				&& abs(SquareToColIndex[i] - SquareToColIndex[j]) == 1)
+				|| (abs(SquareToRowIndex[i] - SquareToRowIndex[j]) == 1
+					&& abs(SquareToColIndex[i] - SquareToColIndex[j]) == 2)) {
 				KnightDirection[i][j] = j - i;
 			}
 		}
@@ -4024,12 +4026,26 @@ bool test_extend_time(int);
 
 //used to be !pv[0][0].empty()
 
-Move pv[MAX_PLY];
-int pv_length = 0;
-Move Ply0Move;
+struct PV_Record
+{
+	Move move;
+	Move second;
+	int value;
+	int depth;
+	void clear()
+	{
+		move.clear();
+		second.clear();
+		depth = -INF;
+	}
+};
+
+PV_Record pv[MAX_PLY][MAX_PLY];
+int pv_length[MAX_PLY];
+//Move Ply0Move;
 bool has_a_first_move()
 {
-	return !Ply0Move.empty();
+	return !pv[0][0].move.empty();
 }
 
 void checkup()
@@ -5387,7 +5403,7 @@ bool dec_ply()
 
 Move TestMove(Colors c, PieceSlotType p, Pos target, PieceType promotion)
 {
-	if (color(p) != c) return Move();
+	if (!is_piece(p) || color(p) != c || Board[Players.positions[p]]!= p) return Move();
 	return TestMoveTable[Players.pieces[p]](c, Players.positions[p], target, promotion);
 }
 
@@ -6953,15 +6969,17 @@ inline bool close_to_mate(int score)
 
 #define FUTILITY
 #define REVERSE_FUTILITY
-#define LMR
+//#define LMR
 #define NULL_MOVE
-//#define SIMPLE_EVAL
-#define SMART_EVAL
+#define SIMPLE_EVAL
+//#define SMART_EVAL
 
 
 //#define IGNORE_TT
 
-
+#ifdef IGNORE_TT
+#define PV_ARRAY
+#endif
 bool USE_TT = true;
 
 int See(Pos);
@@ -6980,7 +6998,7 @@ bool InIID = false;
 bool Smart = false;
 int LMR_THIN_THRESHOLD;
 
-int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere_in_null, int beta_real, const RelativeMove &last_move, bool in_check, int realdepth, int extensions)
+int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bool somewhere_in_null, int beta_real, const RelativeMove &last_move, bool in_check, int realdepth, int extensions)
 {
 	const bool zero = (beta == alpha + 1);
 	PieceSlotType last_piece_moved = last_move.from;
@@ -6999,55 +7017,100 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 	if (d == 0) {
 		NumPinMoves[PlySide()] = 0;
 	}
+	//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
 	Colors my_color = other_color(PlySide());
 	HashTableEntry *n = nullptr;
 	Move m2;
 	HashMove m3;
 	int move_depth = -127;
 	if (!MovesOrdered.empty()) MovesOrdered.reveal();
-#ifndef IGNORE_TT
-	//if (d>0)
-	{
-		n = GetOrMakeHash(d <= 0, my_color);
-		int lower = n->get_lower(d);
-		int upper = n->get_upper(d);
-		bool hash_move_repeat = false;
-		HashMove *m = &n->get_move();
-		if (!m->empty()) {
-			if (!MovesOrdered.empty()) {
-				int mn = sort_pv(*m);
-				if (mn != -1) {
-					m2 = MovesOrdered[mn];
-					//MovesOrdered.used[mn] = 0;
-				}
-			}
-			else m2 = TestMove(my_color, Board[m->from], m->to, m->became);
-
-		}
+#ifdef PV_ARRAY
+	if (in_pv && (pv_length[0] <= CurrentPly - 1 || pv[CurrentPly - 1][0].move.empty()))
+#endif
+		in_pv = false;
+	//n = GetOrMakeHash(d <= 0, my_color);
+	int lower = -INF;
+	int upper = INF;
+	bool hash_move_repeat = false;
+	if (in_pv) {
+		m2 = pv[CurrentPly - 1][0].move;//TestMove(my_color, Board[pv[CurrentPly - 1][0].move.from], pv[CurrentPly - 1][0].move.to, pv[CurrentPly - 1][0].move.became);
 		if (!m2.empty()) {
-			m2.move_flags = m->move_flags;
-			move_depth = n->get_move_depth();
-//			inc_ply();
+			m2.move_flags = pv[CurrentPly - 1][0].move.move_flags;
 			m2.make();
 			hash_move_repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
+			move_depth = pv[CurrentPly - 1][0].depth;
 			if (hash_move_repeat) {
-				//				upper = lower = -n->get_eval() >> 1;
+//				upper = lower = -n->get_eval() >> 1;
 				if ((CurrentPly & 1) == 0) upper = lower = -2 * PAWN_VALUE;
 				else upper = lower = 2 * PAWN_VALUE;
 			}
+			else {
+					if (d <= move_depth) {
+						m2.unmake();
+						return pv[CurrentPly - 1][0].value;
+				}
+				lower = upper = pv[CurrentPly - 1][0].value;
+			}
 			m2.unmake();
-//			dec_ply();
+			m3= pv[CurrentPly - 1][0].second;
+		}
+		else {
+			//				print_board();
+			//				cout << MinDepth << " " << CurrentPly - 1 << " from "<<PosToStandard[pv[CurrentPly - 1][0].move.from] << " to " << PosToStandard[pv[CurrentPly - 1][0].move.to]<<endl;
+
+			//				m2 = TestMove(my_color, Board[pv[CurrentPly - 1][0].move.from], pv[CurrentPly - 1][0].move.to, pv[CurrentPly - 1][0].move.became);
+
+			in_pv = false;
+		}
+	}
+#ifndef IGNORE_TT
+	//if (d>0)
+		{
+		n = GetOrMakeHash(d <= 0, my_color);
+		if (upper != lower) {
+			lower = n->get_lower(d);
+			upper = n->get_upper(d);
+		}
+		if (!in_pv) {
+			HashMove *m = &n->get_move();
+			if (!m->empty()) {
+				if (!MovesOrdered.empty()) {
+					int mn = sort_pv(*m);
+					if (mn != -1) {
+						m2 = MovesOrdered[mn];
+						//MovesOrdered.used[mn] = 0;
+					}
+				}
+				else m2 = TestMove(my_color, Board[m->from], m->to, m->became);
+
+			}
+
+			if (!m2.empty()) {
+				m2.move_flags = m->move_flags;
+				move_depth = n->get_move_depth();
+				//			inc_ply();
+				m2.make();
+				hash_move_repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
+				if (hash_move_repeat) {
+					//				upper = lower = -n->get_eval() >> 1;
+					if ((CurrentPly & 1) == 0) upper = lower = -2 * PAWN_VALUE;
+					else upper = lower = 2 * PAWN_VALUE;
+				}
+				m2.unmake();
+				//			dec_ply();
+			}
 		}
 		if (!m2.empty()) {
 			if (!hash_move_repeat && lower >= beta) {
-
 				if (CurrentPly == 1) {
 					if (!m2.empty()) {
 //						Ply0Move = m2;
+						if (pv[0][0].move.empty()) pv[0][0].move = m2;
 						if (d <= 0) --MidNodes; else {
 							--NCMidNodes;
 						}
-						return lower;
+						//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
+						if (zero || InIID)return lower;
 					}
 					else {
 						lower = alpha;
@@ -7066,16 +7129,18 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 						//					++NumberOnFirstMove;
 						--NCMidNodes;
 					}
-					return lower;
+					//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
+					if (zero || InIID)return lower;
 				}
 				;
 			}
 			if (!hash_move_repeat && (upper <= alpha || upper == lower)) {
 				if (CurrentPly == 1) {
 					if (!m2.empty()) {
-						Ply0Move = m2;
+						if (pv[0][0].move.empty()) pv[0][0].move = m2;
 						if (d <= 0) --MidNodes; else --NCMidNodes;
-						return lower;
+						//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
+						if (zero || InIID)return lower;
 					}
 					else {
 						lower = alpha;
@@ -7084,12 +7149,14 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 				}
 				else {
 					if (d <= 0) --MidNodes; else --NCMidNodes;
-					return upper;
+					if (!zero && upper > alpha) pv[CurrentPly - 1][CurrentPly - 1].move = m2;
+					//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
+					if (zero || InIID)return upper;
 				}
 			}
-			if (CurrentPly == 0 && Ply0Move.empty()) {
+			if (CurrentPly == 1 && pv[0][0].move.empty()) {
 				if (!m2.empty()) {
-					Ply0Move = m2;
+					if (pv[0][0].move.empty()) pv[0][0].move = m2;
 				}
 			}
 			if (CurrentPly != 1) {
@@ -7097,9 +7164,10 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 				beta = __min(beta, upper);
 			}
 		}
-		else if (CurrentPly == 1) m2 = Ply0Move;
+		else if (CurrentPly == 1) m2 = pv[0][0].move;
 
-		m3 = n->second_move;
+		if (n!=nullptr) m3 = n->second_move;
+
 	}
 	//else if (CurrentPly == 0) m2 = Ply0Move;
 #endif
@@ -7137,11 +7205,13 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 
 #ifdef FUTILITY
 		if (CheckForEndgame && d>0 &&
-			(late||InIID||zero) && 
+			(late||
+				InIID||zero) && 
 			!in_check //&& d <= 3 
 			&& !(close_to_mate(alpha) || close_to_mate(beta))) {
 			if (n != nullptr && n->get_upper(d - 1) + ROOK_VALUE < alpha) {
 				if (d <= 0) --MidNodes; else --NCMidNodes;
+				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
 				return n->get_upper(d - 1);
 			}
 			//			if (n != nullptr && n->get_upper(d - 2) + QUEEN_VALUE + PAWN_VALUE< alpha) {
@@ -7162,6 +7232,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 				if (d <= 0) --MidNodes; else {
 					--NCMidNodes;
 				}
+				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
 				return lower_val; //stand pat
 			}
 			//			if (n != nullptr){
@@ -7175,7 +7246,8 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 
 #ifdef REVERSE_FUTILITY
 		if (CheckForEndgame && d>0 &&
-			(late|| InIID || zero) &&
+			(late|| 
+				InIID || zero) &&
 			!in_check //&& d <= 3 
 			&& !(close_to_mate(alpha) || close_to_mate(beta))) 
 		{
@@ -7186,6 +7258,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 					//					++NumFailHighNodes;
 					//					++NumberOnFirstMove;
 				}
+				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
 				return n->get_lower(d - 1);
 			}
 			if (n != nullptr && n->get_lower(d - 2) - ROOK_VALUE > beta) {
@@ -7195,6 +7268,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 					//					++NumberOnFirstMove;
 					--NCMidNodes;
 				}
+				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 1;
 				return n->get_lower(d - 2);
 			}
 			/*
@@ -7221,7 +7295,8 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 		//endgame test should be side to move has 2 or fewer minor or major pieces
 #ifdef NULL_MOVE
 		if (//beta_real &&
-			(late|| InIID || zero) &&
+			(late|| 
+				InIID || zero) &&
 			val >= beta &&// - BISHOP_VALUE - PAWN_VALUE &&
 			//val < beta + BISHOP_VALUE &&
 			//beta != INF &&
@@ -7241,7 +7316,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 				new_depth = __min(2, __max(d - 4, 1));//
 				//new_depth = __max(d - 3, 1);//
 													  //(d>6?d - 5: __max(d - 4, 0));
-				new_value = -NegaScout(verify, -beta, -beta + 1, new_depth, false, somewhere_in_null, -alpha, EmptyMove, false, new_depth, INF);
+				new_value = -NegaScout(false,verify, -beta, -beta + 1, new_depth, false, somewhere_in_null, -alpha, EmptyMove, false, new_depth, INF);
 			}
 			catch (OutOfTimeException) {
 				dec_ply();
@@ -7249,8 +7324,10 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 			}
 			dec_ply();
 			if (new_value >= beta-10) {
-				if (!verify || InIID)//|| !SideInEndgame_for_null(my_color)) 
-					return __max(beta,new_value);
+				if (!verify || InIID) {//|| !SideInEndgame_for_null(my_color)) 
+					//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
+					return __max(beta, new_value);
+				}
 				if (!SideInEndgame_for_null(my_color)) verify_inc = d- __max(d - 3, 1);
 				fail_high = true;
 				d-=verify_inc;
@@ -7309,6 +7386,12 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 			RelativeMove r;
 
 			while ((g < beta) && (g<KING_VALUE || CurrentPly == 1) && -INF != (move_value = moves.next(c, &move_type, &iid_value))) {
+				const bool n_inpv = in_pv && c == m2 && !m2.empty();
+#ifdef PV_ARRAY
+				if (d > 0 && !zero) {
+					pv_length[CurrentPly] = 0;
+				}
+#endif
 				int val1;
 				++num_moves;
 				if (move_type == MoveGenerator::IID) {
@@ -7356,7 +7439,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 								//if (val1 != -INF) val2 = NegaScout(verify, -val1 + 1, -val1, iid_depth, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, iid_depth, INF);
 								//if (val2 > val1 || val2 == -INF) val2 = -NegaScout(verify, -beta, -val1, iid_depth, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, iid_depth, INF);
 								//if (val2 > val1) val1 = val2;
-								int val2 = -NegaScout(verify, -beta, -a, iid_depth, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, iid_depth, INF);
+								int val2 = -NegaScout(false, verify, -beta, -a, iid_depth, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, iid_depth, INF);
 								dec_ply();
 								//if (val2 > beta) {
 								//	InIID=in_iid_temp;
@@ -7506,15 +7589,15 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 								--new_depth;
 								if (d > 2 && reduced + lmr_dec > 3) {
 									--new_depth;
-									if (//lmr_dec>=0 && 
-										d > 3 && reduced + lmr_dec * 2 > 7) {
-										--new_depth;
-										++delay;
+	//								if (//lmr_dec>=0 && 
+	//									d > 3 && reduced + lmr_dec * 2 > 7) {
+	//									--new_depth;
+	//									++delay;
 	//									if (d > 4 && reduced + lmr_dec * 3 > 13) {
 	//										--new_depth;
 	//										++delay;
 	//									}
-									}
+	//								}
 								}
 							}
 						}
@@ -7525,11 +7608,11 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 								++reduced;
 								--new_depth;
 								delay += delay_inc;
-								if (//lmr_dec >= 0 && 
-									d > 2 && reduced + lmr_dec > 3) {
-									--new_depth;
-									delay += delay_inc;
-								}
+//								if (//lmr_dec >= 0 && 
+//									d > 2 && reduced + lmr_dec > 3) {
+//									--new_depth;
+//									delay += delay_inc;
+//								}
 							}
 						}
 					}
@@ -7541,21 +7624,21 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 								++reduced;
 								--new_depth;
 								++delay;
-								if (//lmr_dec >= 0 &&
-									d > 2 && reduced + lmr_dec > 3) {
-									--new_depth;
+//								if (//lmr_dec >= 0 &&
+//									d > 2 && reduced + lmr_dec > 3) {
+//									--new_depth;
 									//									delay += delay_inc;
-								}
+//								}
 							}
 						}
 						else {
 							//pv, capture
-							if (move_value <= 0 && move_count > 2) // && CheckForEndgame 
-							{
-								++reduced;
-								--new_depth;
-								++delay;
-							}
+//							if (move_value <= 0 && move_count > 2) // && CheckForEndgame 
+//							{
+//								++reduced;
+//								--new_depth;
+//								++delay;
+//							}
 						}
 					}
 				}//else if (other)
@@ -7584,10 +7667,10 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 #ifdef VERIFYLMR
 					if (!repeat && delay) {
 						if (a != -INF) {
-							//							val1 = -NegaScout(verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to],other_in_check,realdepth-1);
-							val1 = -NegaScout(verify, -(a + 1), -a, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+							//							val1 = -NegaScout(n_inpv, verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to],other_in_check,realdepth-1);
+							val1 = -NegaScout(n_inpv, verify, -(a + 1), -a, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 							if (!zero) *iid_value = val1;
-							//							val1 = -NegaScout(verify, -beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, Board[c.to],other_in_check,realdepth-1);
+							//							val1 = -NegaScout(n_inpv, verify, -beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, Board[c.to],other_in_check,realdepth-1);
 							if (val1 > a) {
 								new_depth += delay;
 								//new_depth = d - 1;
@@ -7595,7 +7678,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 							}
 						}
 						else {
-							//							val1 = -NegaScout(verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to],other_in_check,realdepth-1);
+							//							val1 = -NegaScout(n_inpv, verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to],other_in_check,realdepth-1);
 							new_depth = d - 1;
 							delay = 0;
 						}
@@ -7623,17 +7706,17 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 					else if (delay != 0);
 
 					else if (a == beta - 1) {
-						val1 = -NegaScout(verify, -beta, -a, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+						val1 = -NegaScout(n_inpv, verify, -beta, -a, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 						if (!zero)*iid_value = val1;
 						//						if (new_depth!=d-1 && val1 > a) {
 						//							delay = false;
 						//							new_depth = d - 1;
-						//							val1 = -NegaScout(verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to],other_in_check,realdepth-1);
+						//							val1 = -NegaScout(n_inpv, verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to],other_in_check,realdepth-1);
 						//						}
 					}
 					else if (a == -INF && beta == INF //|| (d>0 && CounterMove(false, last_move).get().empty())
 						) {
-						//							val1 = -NegaScout(verify, -beta, -a, new_depth, false, somewhere_in_null, true, true, r,other_in_check,realdepth-1);
+						//							val1 = -NegaScout(n_inpv, verify, -beta, -a, new_depth, false, somewhere_in_null, true, true, r,other_in_check,realdepth-1);
 						///*
 #define ASPIRATION_WINDOW
 #ifdef ASPIRATION_WINDOW
@@ -7658,14 +7741,14 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 						int low = firstguess - inc;
 						int high = firstguess + inc;
 
-						val1 = -NegaScout(verify, -high, -low, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+						val1 = -NegaScout(n_inpv, verify, -high, -low, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 						if (!zero)*iid_value = val1;
 						if (val1 < low) {
 							do {
 								//inc <<= 1;
 								low = val1 - inc;
 								inc = inc + (inc >> 1);
-								int val2 = -NegaScout(verify, -val1, -low, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+								int val2 = -NegaScout(n_inpv, verify, -val1, -low, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 								if (!zero)*iid_value = val2;
 								if (val2 > val1) {
 									//									 inc = (inc<<1)+val2-val1;
@@ -7686,7 +7769,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 								//								inc <<= 1;
 								high = val1 + inc;
 								inc = inc + (inc >> 1);
-								int val2 = -NegaScout(verify, -high, -val1, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+								int val2 = -NegaScout(n_inpv, verify, -high, -val1, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 								if (!zero)*iid_value = val2;
 								if (val2 < val1) {
 									//									inc = (inc << 1) + val1 - val2;
@@ -7710,11 +7793,11 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 						int low = firstguess - inc;
 						int high = firstguess + inc;
 						bool afound = false;
-						val1 = -NegaScout(verify, -high, -low, new_depth, false, somewhere_in_null, false, false, r, other_in_check, realdepth - 1);
+						val1 = -NegaScout(n_inpv, verify, -high, -low, new_depth, false, somewhere_in_null, false, false, r, other_in_check, realdepth - 1);
 						if (val1 < low) {
 							//inc <<= 1;
 							low = val1 - 64;
-							int val2 = -NegaScout(verify, -val1, -low, new_depth, false, somewhere_in_null, true, false, r, other_in_check, realdepth - 1);
+							int val2 = -NegaScout(n_inpv, verify, -val1, -low, new_depth, false, somewhere_in_null, true, false, r, other_in_check, realdepth - 1);
 
 							if (val2 > val1) {
 							}
@@ -7725,7 +7808,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 						}
 						else if (val1 >= high) {
 							high = val1 + 32;
-							int val2 = -NegaScout(verify, -high, -val1, new_depth, false, somewhere_in_null, false, true, r, other_in_check, realdepth - 1);
+							int val2 = -NegaScout(n_inpv, verify, -high, -val1, new_depth, false, somewhere_in_null, false, true, r, other_in_check, realdepth - 1);
 							if (val2 < val1) {
 							}
 							else {
@@ -7734,54 +7817,54 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 							val1 = val2;
 						}
 						if (!afound) {
-							val1 = -NegaScout(verify, -beta, -a, new_depth, false, somewhere_in_null, true, true, r, other_in_check, other_in_check, realdepth - 1);
+							val1 = -NegaScout(n_inpv, verify, -beta, -a, new_depth, false, somewhere_in_null, true, true, r, other_in_check, other_in_check, realdepth - 1);
 						}
 #endif
 						//*/
 						/*
-						val1 = -NegaScout(verify, -(firstguess+1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
+						val1 = -NegaScout(n_inpv, verify, -(firstguess+1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
 						if (val1<firstguess) {
 						do {
 						firstguess = __min(val1,firstguess);
-						val1 = -NegaScout(verify, -(firstguess + 1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
+						val1 = -NegaScout(n_inpv, verify, -(firstguess + 1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
 						} while (val1 < firstguess);
 						}
 						else {
 						do {
 						firstguess = __max(val1,firstguess);
-						val1 = -NegaScout(verify, -(firstguess + 1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
+						val1 = -NegaScout(n_inpv, verify, -(firstguess + 1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
 						} while (val1 >= firstguess);
 						}
 						*/
 					}
 					else {
 						if (a == -INF) {
-							val1 = -NegaScout(verify, -beta, -beta + 1, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+							val1 = -NegaScout(n_inpv, verify, -beta, -beta + 1, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 							if (!zero)*iid_value = val1;
 							//							if (new_depth != d - 1 && val1 > a) {
 							//								delay = false;
 							//								new_depth = d - 1;
-							//								val1 = -NegaScout(verify, -beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, Board[c.to],other_in_check,realdepth-1);
+							//								val1 = -NegaScout(n_inpv, verify, -beta, -beta + 1, new_depth, false, somewhere_in_null, true, false, Board[c.to],other_in_check,realdepth-1);
 							//							}
 							if (val1 < beta) {
-								val1 = -NegaScout(verify, -val1, -a, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+								val1 = -NegaScout(n_inpv, verify, -val1, -a, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 								if (!zero)*iid_value = val1;
 								//								int low, inc = 16;
 								//								do {
 								//									low = val1 - inc;
 								//									inc = inc +(inc>> 1);
-								//									val1 = -NegaScout(verify, -val1, -low, new_depth, false, somewhere_in_null, true, false, r,other_in_check,realdepth-1);
+								//									val1 = -NegaScout(n_inpv, verify, -val1, -low, new_depth, false, somewhere_in_null, true, false, r,other_in_check,realdepth-1);
 								//								} while (val1 < low);
 							}
 						}
 						else if (beta == INF) {
 #ifdef ASPIRATION_WINDOW
-							val1 = -NegaScout(verify, -(a + 1), -a, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+							val1 = -NegaScout(n_inpv, verify, -(a + 1), -a, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 							if (!zero)*iid_value = val1;
 							if (val1 >= a) {
 								int inc = 16;
 								do {
-									int val2 = -NegaScout(verify, -(val1 + inc), -val1, new_depth, false, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+									int val2 = -NegaScout(n_inpv, verify, -(val1 + inc), -val1, new_depth, false, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 									if (!zero)*iid_value = val2;
 									inc += inc >> 1;
 									if (val2 < val1) {
@@ -7797,14 +7880,14 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 									val1 = val2;
 								} while (true);
 								//								if (abs(val2 - val1) < PAWN_VALUE) val1 = (val1 + val2) >> 1;
-								//								else val1 = -NegaScout(verify, -val2, -val1, new_depth, false, somewhere_in_null, true, false, r,other_in_check,realdepth-1);
+								//								else val1 = -NegaScout(n_inpv, verify, -val2, -val1, new_depth, false, somewhere_in_null, true, false, r,other_in_check,realdepth-1);
 							}
 #else
-							val1 = -NegaScout(verify, -(a + 1), -a, new_depth, false, somewhere_in_null, false, alpha_real, r, other_in_check, realdepth - 1);
+							val1 = -NegaScout(n_inpv, verify, -(a + 1), -a, new_depth, false, somewhere_in_null, false, alpha_real, r, other_in_check, realdepth - 1);
 							bool afound = false;
 							if (val1 >= a) {
 								int inc = 32;
-								int val2 = -NegaScout(verify, -(val1 + inc), -val1, new_depth, false, somewhere_in_null, false, true, r, other_in_check, realdepth - 1);
+								int val2 = -NegaScout(n_inpv, verify, -(val1 + inc), -val1, new_depth, false, somewhere_in_null, false, true, r, other_in_check, realdepth - 1);
 								//inc += inc >> 1;
 								if (val2 < val1) {
 									val1 = a;
@@ -7816,8 +7899,8 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 								}
 								val1 = val2;
 								if (!afound) {
-									val2 = -NegaScout(verify, -beta, -val1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
-									if (val2 < val1) val1 = -NegaScout(verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
+									val2 = -NegaScout(n_inpv, verify, -beta, -val1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
+									if (val2 < val1) val1 = -NegaScout(n_inpv, verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
 									else val1 = val2;
 								}
 							}
@@ -7827,17 +7910,17 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 							//#define BINARY_SCOUT
 #ifdef BINARY_SCOUT
 							int val2;
-							val1 = -NegaScout(verify, -(a + 1), -(a), new_depth, false, somewhere_in_null, false, alpha_real, r, other_in_check, realdepth - 1);
+							val1 = -NegaScout(n_inpv, verify, -(a + 1), -(a), new_depth, false, somewhere_in_null, false, alpha_real, r, other_in_check, realdepth - 1);
 							if (val1 < beta && val1 >= a) {
-								val2 = -NegaScout(verify, -beta, -beta + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
+								val2 = -NegaScout(n_inpv, verify, -beta, -beta + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
 								int count = 0;
 								while (abs(val1 - val2)>20) {
 									if (++count > 0) {
-										val1 = val2 = -NegaScout(verify, -val2, -val1 + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
+										val1 = val2 = -NegaScout(n_inpv, verify, -val2, -val1 + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
 										break;
 									}
 									int between = (val1 + val2) >> 1;
-									int m = -NegaScout(verify, -between, -between + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
+									int m = -NegaScout(n_inpv, verify, -between, -between + 1, new_depth, false, somewhere_in_null, beta_real, alpha_real, r, other_in_check, realdepth - 1);
 									if (m <= val1) break;
 									if (m >= val2) {
 										val1 = val2;
@@ -7851,7 +7934,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 									}
 								}
 								val1 = (val1 + val2) >> 1;
-								//								if (val2 < val1) val1 = -NegaScout(verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r);
+								//								if (val2 < val1) val1 = -NegaScout(n_inpv, verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, r);
 								//								else val1 = val2;
 							}
 #else
@@ -7861,7 +7944,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 #define MARGIN PAWN_VALUE
 #endif
 							int val2;
-							val1 = -NegaScout(verify, -(a + 1), -(a), new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+							val1 = -NegaScout(n_inpv, verify, -(a + 1), -(a), new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 							if (!zero)*iid_value = val1;
 							bool interesting;
 #ifdef SMART_EVAL
@@ -7871,8 +7954,8 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 							else interesting = val1 < beta + MARGIN && val1 >= a - MARGIN;
 #endif
 							if (interesting) {
-								val2 = -NegaScout(verify, -beta, -val1, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
-								if (val2 < val1) val1 = -NegaScout(verify, -val2, -a, new_depth, false, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+								val2 = -NegaScout(n_inpv, verify, -beta, -val1, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
+								if (val2 < val1) val1 = -NegaScout(n_inpv, verify, -val2, -a, new_depth, false, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
 								else val1 = val2;
 								if (!zero)*iid_value = val1;
 							}
@@ -7896,8 +7979,26 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 					second_best_move = best_move;
 					best_move = c;
 					best_move_type = move_type;
-					if (CurrentPly == 2) Ply0Move = c;
+//					if (CurrentPly == 2) Ply0Move = c;
 					best_value = move_value;
+				}
+				if ( g > a) {
+#ifdef PV_ARRAY
+					if (!InIID && !zero && d>0) {
+						pv[CurrentPly - 2][CurrentPly - 2].move = c;
+						pv[CurrentPly - 2][CurrentPly - 2].second = second_best_move;
+						pv[CurrentPly - 2][CurrentPly - 2].depth = d;
+						pv[CurrentPly - 2][CurrentPly - 2].value = g;
+						if (d > 1) {
+							for (int i = CurrentPly - 1;i <= pv_length[CurrentPly - 1];++i)pv[i][CurrentPly - 2] = pv[i][CurrentPly - 1];
+							pv_length[CurrentPly - 2] = __max(CurrentPly - 1, pv_length[CurrentPly - 1]);
+						}
+						else pv_length[CurrentPly - 2] = CurrentPly - 1;
+					}
+#else
+					if (!InIID && !zero && d>0)
+						pv[CurrentPly - 2][CurrentPly - 2].move = c;
+#endif
 				}
 				if (g > a) {
 					a = g;
@@ -7909,18 +8010,26 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 
 			if (g >= beta && second_best_move.empty() && !MovesOrdered.empty() && (moves.found || MovesOrdered.find_best())) {
 				second_best_move = MovesOrdered.best();
+				pv[CurrentPly - 2][CurrentPly - 2].second = second_best_move;
 			}
 
 			if (!c.empty() && move_count == 1 && g < beta && CurrentPly + realdepth<MAX_MOVES + QUIESCENT_DEPTH + 1) {
 				c.make();
 				int val1;
+
+				const bool n_inpv = in_pv && c == m2;
+#ifdef PV_ARRAY
+				if (d > 0 && !zero) {
+					pv_length[CurrentPly] = 0;
+				}
+#endif
 				try {
 					int val2;
 					inc_ply();
-					val1 = -NegaScout(verify, -(a + 1), -(a), last_depth + 1, false, somewhere_in_null, -a, r, other_in_check, realdepth, extensions);
+					val1 = -NegaScout(n_inpv, verify, -(a + 1), -(a), last_depth + 1, false, somewhere_in_null, -a, r, other_in_check, realdepth, extensions);
 					if (val1 < beta && val1 >= a) {
-						val2 = -NegaScout(verify, -beta, -val1, last_depth + 1, false, somewhere_in_null, -a, r, other_in_check, realdepth, extensions);
-						if (val2 < val1) val1 = -NegaScout(verify, -beta, -a, last_depth + 1, false, somewhere_in_null, -a, r, other_in_check, realdepth, extensions);
+						val2 = -NegaScout(n_inpv, verify, -beta, -val1, last_depth + 1, false, somewhere_in_null, -a, r, other_in_check, realdepth, extensions);
+						if (val2 < val1) val1 = -NegaScout(n_inpv, verify, -beta, -a, last_depth + 1, false, somewhere_in_null, -a, r, other_in_check, realdepth, extensions);
 						else val1 = val2;
 					}
 					dec_ply();
@@ -7943,6 +8052,23 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 						//}
 					}
 				}
+				if (g > a) {
+#ifdef PV_ARRAY
+					if (!InIID && !zero && g<beta && d>0) {
+						pv[CurrentPly - 1][CurrentPly - 1].move = c;
+						pv[CurrentPly - 1][CurrentPly - 1].depth = d;
+						pv[CurrentPly - 1][CurrentPly - 1].value = g;
+						if (d > 1) {
+							for (int i = CurrentPly;i <= pv_length[CurrentPly];++i)pv[i][CurrentPly - 1] = pv[i][CurrentPly];
+							pv_length[CurrentPly - 1] = __max(CurrentPly, pv_length[CurrentPly]);
+						}
+						else pv_length[CurrentPly - 1] = CurrentPly;
+					}
+#else
+					if (!InIID && !zero && d>0)
+						pv[CurrentPly - 2][CurrentPly - 2].move = c;
+#endif
+				}
 				if (val1 > g) {
 					second_best_value = g;
 					g = val1;
@@ -7950,7 +8076,7 @@ int NegaScout(bool verify, int alpha, int beta, int d, bool late, bool somewhere
 					best_move = c;
 					best_value = move_value;
 					best_move_type = move_type;
-					if (CurrentPly == 1) Ply0Move = c;
+//					if (CurrentPly == 1) Ply0Move = c;
 				}
 				else if (val1 > second_best_value) second_best_value = val1;
 				if (g > a) {
@@ -8092,7 +8218,7 @@ int MTDF(int g, int d)
 	const bool other_in_check = king_in_check(PlySide());
 	inc_ply();
 	try {
-		int ret = NegaScout(true, -INF, INF, d, false, false, INF, RelativeMove(), other_in_check, d + 1, 0);
+		int ret = NegaScout(true,true, -INF, INF, d, false, false, INF, RelativeMove(), other_in_check, d + 1, 0);
 		dec_ply();
 		return ret;
 	}
@@ -8195,6 +8321,12 @@ void think(int output)
 	EphemeralValue *= .94;
 	TimeExtended = false;
 	int i, j, x;
+#ifdef PV_ARRAY
+	for (i = 0;i < MAX_PLY;++i) {
+		pv_length[i] = 0;
+		for (j = 0;j < MAX_PLY;++j) pv[i][j].clear();
+	}
+#endif
 	for (i = 0;i < MAX_PLY - 2;++i) {
 		for (j = 0;j < 4; ++j) {
 			//			CaptureKillers.BestMovePerPly[j][i].clear();
@@ -8211,7 +8343,7 @@ void think(int output)
 		//		CaptureKillers.BestMovePerPlyIndex[i] = 0;
 		BestMovePerPlyIndex[i] = 0;
 	}
-	Ply0Move.clear();
+	pv[0][0].clear();
 
 	/*
 	if (!DisableBook && book_move()) {
@@ -8254,38 +8386,43 @@ void think(int output)
 		}
 
 		//get principle variation
-		pv[0] = Ply0Move;
-		if (Ply0Move.empty())
+		//pv[0] = Ply0Move;
+#ifndef PV_ARRAY
 		{
-			pv_length = 0;
-		}
-		else {
-			pv_length = 1;
+			if (pv[0][0].move.empty())
+			{
+				pv_length[0] = 0;
+			}
+			else {
+				pv_length[0] = 1;
 
-			for (j = 0;j < MAX_PLY - 2;++j) {
-				pv[j].make();
-				inc_ply();
-				HashTableEntry *e = GetHash(false, PlySide());
-				if (e != nullptr) {
-					HashMove *m = &(e->get_move());
-					if (!m->empty()) {
-						Move c = TestMove(PlySide(), Board[m->from], m->to, m->became);
-						if (!c.empty()) {
-							c.move_flags = m->move_flags;
-							pv[j + 1] = c;
-							pv_length = j + 2;
-							continue;
+				for (j = 0;j < MAX_PLY - 2;++j) {
+
+					pv[j][0].move.make();
+					inc_ply();
+					HashTableEntry *e = GetHash(false, PlySide());
+					if (e != nullptr) {
+						HashMove *m = &(e->get_move());
+						if (!m->empty()) {
+							Move c = TestMove(PlySide(), Board[m->from], m->to, m->became);
+							if (!c.empty()) {
+								c.move_flags = m->move_flags;
+								pv[j + 1][0].move = c;
+								pv_length[0] = j + 2;
+								continue;
+							}
 						}
 					}
+					break;
 				}
-				break;
-			}
-			while (CurrentPly != 0) {
-				dec_ply();
-				pv[CurrentPly].unmake();
+				while (CurrentPly != 0) {
+					dec_ply();
+					pv[CurrentPly][0].move.unmake();
+				}
 			}
 //			assert(test == Hash);
 		}
+#endif
 		//4000
 
 		double failhigh = 0;
@@ -8299,7 +8436,7 @@ void think(int output)
 		if (y < -500) y = -500;
 		int end_time = get_ms();
 		if (output == 1)
-			printf("%3d  %9d  %7d  %5d %f nps ", i, Nodes, (pv[0].from / 10 - 2) * 8 + (pv[0].from % 10 - 1), y * 20, Nodes*1000.0 / (end_time - StartTime));   // @ED
+			printf("%3d  %9d  %7d  %5d %f nps ", i, Nodes, (pv[0][0].move.from / 10 - 2) * 8 + (pv[0][0].move.from % 10 - 1), y * 20, Nodes*1000.0 / (end_time - StartTime));   // @ED
 		else if (output == 2) {
 			printf("%d %d %d %d %.4g %.2g %.2g %.2g",
 				MinDepth, x, (end_time - StartTime) / 10, Nodes, (double)FailHighTotal / FailHighCount,
@@ -8309,9 +8446,9 @@ void think(int output)
 			LOG(Log << "depth:" << MinDepth << " score" << x << " time:" << (end_time - StartTime) / 10 << " Nodes:" << Nodes << " median branching factor quiescent:" << (double)Nodes / MidNodes << " median branching factor:" << (double)NCNodes / NCMidNodes << " fail high on first:" << (double)NumberOnFirstMove / NumFailHighNodes) << endl;
 		}
 		if (output) {
-			for (j = 0; j < pv_length; ++j) {
-				if (pv[j].empty()) break;
-				printf(" %s", move_str(pv[j]));
+			for (j = 0; j < pv_length[0]; ++j) {
+				if (pv[j][0].move.empty()) break;
+				printf(" %s", move_str(pv[j][0].move));
 			}
 		}
 
@@ -8322,7 +8459,7 @@ void think(int output)
 			break;
 	};
 	if (extended_time()) { LOG(Log << "extended time " << MaxTime << endl); }
-	LOG(Log << "computer moved at " << move_str(pv[0]) << endl);
+	LOG(Log << "computer moved at " << move_str(pv[0][0].move) << endl);
 	restore_time();
 	if (TimeExtended) set_first_guess(Ply0Alpha);
 	else add_first_guess(Ply0Alpha);
@@ -8434,16 +8571,16 @@ void xboard()
 				}
 				LOG(Log << "MaxTime " << MaxTime << endl);
 				think(post);
-				if (pv[0].empty()) {
+				if (pv[0][0].move.empty()) {
 					//				set_side(other_color(PlySide()));//??
 					//				print_result();
 					computer_side = NO_COLOR;
 					continue;
 				}
-				printf("move %s\n", move_str(pv[0]));
+				printf("move %s\n", move_str(pv[0][0].move));
 				set_side(other_color(PlySide()));//??
-				pv[0].make();
-				History[history_len++] = pv[0];
+				pv[0][0].move.make();
+				History[history_len++] = pv[0][0].move;
 
 				//			print_result();
 				log_board();
@@ -8547,9 +8684,9 @@ void xboard()
 		}
 		if (!strcmp(command, "hint")) {
 			think(0);
-			if (pv[0].empty())
+			if (pv[0][0].move.empty())
 				continue;
-			printf("Hint: %s\n", move_str(pv[0]));
+			printf("Hint: %s\n", move_str(pv[0][0].move));
 			continue;
 		}
 		if (!strcmp(command, "undo")) {
@@ -8655,20 +8792,20 @@ int mainish()
 			//			eval();
 			//			piece_threats();
 			think(2);//1 for original format
-			if (pv[0].empty()) {
+			if (pv[0][0].move.empty()) {
 				LOG(Log << "(no legal moves)\n");
 				printf("(no legal moves)\n");
 				computer_side = NO_COLOR;
 				continue;
 			}
 
-			printf("Computer's move: %s\n", move_str(pv[0]));
-			LOG(Log << "Computer's move: " << move_str(pv[0]) << (PlySide() == LIGHT ? " Light" : " Dark") << endl);
+			printf("Computer's move: %s\n", move_str(pv[0][0].move));
+			LOG(Log << "Computer's move: " << move_str(pv[0][0].move) << (PlySide() == LIGHT ? " Light" : " Dark") << endl);
 			//			board_consistent();
 
 			set_side(other_color(PlySide()));//??
-			pv[0].make();
-			History[history_len++] = pv[0];
+			pv[0][0].move.make();
+			History[history_len++] = pv[0][0].move;
 
 			print_result();
 			continue;
@@ -9222,17 +9359,17 @@ void fen_problem(const char *fen, const char *moves, const char *descr)
 	++fen_count;
 	bool found = false;
 	for (int i = 0;i < moves_read;++i) {
-		if (pv[0] == answers[i]) {
-			cout << "Found answer! " << i + 1 << " = " << move_str(pv[0]) << endl;
-			Log << "Found answer! " << i + 1 << " = " << move_str(pv[0]) << endl;
+		if (pv[0][0].move == answers[i]) {
+			cout << "Found answer! " << i + 1 << " = " << move_str(pv[0][0].move) << endl;
+			Log << "Found answer! " << i + 1 << " = " << move_str(pv[0][0].move) << endl;
 			++fen_correct;
 			found = true;
 			break;
 		}
 	}
 	if (!found) {
-		cout << "Move not in set " << move_str(pv[0]) << endl;
-		Log << "Move not in set " << move_str(pv[0]) << endl;
+		cout << "Move not in set " << move_str(pv[0][0].move) << endl;
+		Log << "Move not in set " << move_str(pv[0][0].move) << endl;
 	}
 	cout << "So far " << fen_correct << " out of " << fen_count << endl;
 	Log << "So far " << fen_correct << " out of " << fen_count << endl;
