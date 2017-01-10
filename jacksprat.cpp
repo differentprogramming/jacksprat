@@ -14,6 +14,7 @@
 #define __max(x,y) ((x)>=(y)?(x):(y))
 #endif
 
+//#define FAIRY
 
 #define KING_VALUE 25000
 /*
@@ -49,13 +50,22 @@ sf 6
 #define PAWN_VALUE (int)(188/1.88)
 #define KNIGHT_VALUE (int)(753/1.88)
 #define BISHOP_VALUE (int)(826/1.88)
+#ifdef FAIRY
+#define ROOK_VALUE (int)(100/1.88)
+#define EROOK_VALUE (int)(100/1.88)
+#else
 #define ROOK_VALUE (int)(1285/1.88)
+#define EROOK_VALUE (int)(1371/1.88)
+#endif
 #define QUEEN_VALUE (int)(2513/1.88)
+
+#define NORMAL_ROOK_VALUE (int)(1285/1.88)
+
+
 
 #define EPAWN_VALUE (int)(248/1.88)
 #define EKNIGHT_VALUE (int)(832/1.88)
 #define EBISHOP_VALUE (int)(897/1.88)
-#define EROOK_VALUE (int)(1371/1.88)
 #define EQUEEN_VALUE (int)(2650/1.88)
 
 
@@ -2835,10 +2845,10 @@ void simple_calc()
 		Players.pieces[LIGHT_KNIGHT1] == EMPTY && Players.pieces[LIGHT_KNIGHT2] == EMPTY) {
 		if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT] != MaterialSums[DARK][MAJOR_MINOR_COUNT]) {
 			if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT] > MaterialSums[DARK][MAJOR_MINOR_COUNT])
-				if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT]<2 * ROOK_VALUE)
+				if (MaterialSums[LIGHT][MAJOR_MINOR_COUNT]<2 * NORMAL_ROOK_VALUE)
 					EvalTemp[LIGHT] += 3 * 47 * CenterManhattanDistance[Players.positions[DARK_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
 				else
-					if (MaterialSums[DARK][MAJOR_MINOR_COUNT]<2 * ROOK_VALUE)
+					if (MaterialSums[DARK][MAJOR_MINOR_COUNT]<2 * NORMAL_ROOK_VALUE)
 						EvalTemp[DARK] += 3 * 47 * CenterManhattanDistance[Players.positions[LIGHT_KINGP]] + 3 * 16 * (14 - ManhattanDistance(Players.positions[DARK_KINGP], Players.positions[LIGHT_KINGP]));
 		}
 	}
@@ -4329,8 +4339,28 @@ do { \
 	break; \
 } while (true)
 
+#define FTSLIDE(direction) \
+expanding = root_pos ;\
+do { \
+	expanding+=direction;\
+	if (expanding != target) { \
+		if (Board[expanding] != NO_SLOT) break; \
+		continue; \
+	}\
+	if (Board[expanding] == NO_SLOT) { \
+		continue;\
+	}\
+	if (color(Board[expanding]) != c) \
+		return Move(root_pos,expanding ATLINE);\
+	break; \
+} while (true)
 
+
+#ifdef FAIRY
+#define HASH_LEN_LN2 21
+#else
 #define HASH_LEN_LN2 23
+#endif
 
 const int HASH_LEN = 1 << HASH_LEN_LN2;
 const int HASH_MASK = HASH_LEN - 1;
@@ -5100,7 +5130,11 @@ Move test_rook_moves(const Colors c, const Pos root_pos, const Pos target, const
 	Pos expanding;
 	const Pos direction = RookDirection[root_pos][target];
 	if (direction != 0) {
+#ifdef FAIRY
+		FTSLIDE(direction);
+#else
 		TSLIDE(direction);
+#endif
 	}
 	return Move();
 }
@@ -5353,8 +5387,13 @@ GenMoveFn* GenQuietMoveTable[NUM_PIECE_TYPES] =
 	generate_quiet_pawn_moves,
 	generate_quiet_knight_moves,
 	generate_quiet_bishop_moves,
+#ifdef FAIRY
+	generate_empty_moves,
+	generate_empty_moves,
+#else
 	generate_quiet_rook_moves,
 	generate_quiet_rook_moves,
+#endif
 	generate_quiet_queen_moves,
 };
 
@@ -5368,8 +5407,14 @@ GenMoveFn* GenMoveTable[NUM_PIECE_TYPES] =
 	generate_pawn_moves,
 	generate_knight_moves,
 	generate_bishop_moves,
+
+#ifdef FAIRY
+	quiesent_generate_rook_moves,
+	quiesent_generate_rook_moves,
+#else
 	generate_rook_moves,
 	generate_rook_moves,
+#endif
 	generate_queen_moves,
 };
 
@@ -7297,13 +7342,16 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		lower_val = __max(lower_val, val);
 		//		const bool in_check = king_in_check(PlySide());
 
+		bool in_end = SideInEndgame_for_null(my_color);
+		bool other_in_end = SideInEndgame_for_null(other_color(my_color));
+
 #ifdef FUTILITY
-		if (CheckForEndgame && d>0 &&
+		if (//CheckForEndgame && //d>0 &&
 			(late||
 				InIID||zero) && 
 			!in_check //&& d <= 3 
 			&& !(close_to_mate(alpha) || close_to_mate(beta))) {
-			if (n != nullptr && n->get_upper(d - 1) + ROOK_VALUE < alpha) {
+			if (n != nullptr && n->get_upper(d - 1) + (other_in_end?2*PAWN_VALUE:NORMAL_ROOK_VALUE) < alpha) {
 				if (d <= 0) --MidNodes; else --NCMidNodes;
 				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
 				return n->get_upper(d - 1);
@@ -7339,13 +7387,13 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		}
 
 #ifdef REVERSE_FUTILITY
-		if (CheckForEndgame && d>0 &&
+		if (//CheckForEndgame && //d>0 &&
 			(late|| 
 				InIID || zero) &&
 			!in_check //&& d <= 3 
 			&& !(close_to_mate(alpha) || close_to_mate(beta))) 
 		{
-			if (n != nullptr && n->get_lower(d - 1) - BISHOP_VALUE > beta) {
+			if (n != nullptr && n->get_lower(d - 1) - (in_end?PAWN_VALUE:BISHOP_VALUE) > beta) {
 				if (d <= 0) { --MidNodes; }
 				else {
 					--NCMidNodes;
@@ -7355,7 +7403,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
 				return n->get_lower(d - 1);
 			}
-			if (n != nullptr && n->get_lower(d - 2) - ROOK_VALUE > beta) {
+			if (n != nullptr && n->get_lower(d - 2) - (in_end ? 2*PAWN_VALUE : NORMAL_ROOK_VALUE) > beta) {
 				if (d <= 0) { --MidNodes; }
 				else {
 					//					++NumFailHighNodes;
@@ -7365,6 +7413,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 1;
 				return n->get_lower(d - 2);
 			}
+			if (d>0 && d <= 2 && n->get_lower(d - 2) == -INF && val - (in_end ? PAWN_VALUE:(BISHOP_VALUE+ NORMAL_ROOK_VALUE)/3)*d > beta) return val - (in_end ? PAWN_VALUE : (BISHOP_VALUE + NORMAL_ROOK_VALUE) / 3) *d;
 			/*
 			if (n != nullptr && n->get_lower(d - 3) - QUEEN_VALUE - PAWN_VALUE > beta) {
 			if (d <= 0) { --MidNodes; }
@@ -7420,7 +7469,6 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 			}
 			dec_ply();
 			if (new_value >= beta-10) {
-				bool in_end = SideInEndgame_for_null(my_color);
 				if (!verify || InIID //|| (zero&& !in_end)
 					) {//|| !SideInEndgame_for_null(my_color)) 
 					//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
@@ -7450,7 +7498,8 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		MoveGenerator &moves = MoveGenerators[CurrentPly-1];
 		moves.EnableHistory = true;
 		moves.init(verify_pass,d//in_check ? (__max(1, d)) : d
-			, m2, m3, last_move, val, !zero && val<beta //!SideInEndgame_for_null(other_color(my_color)) //&& CheckForEndgame
+			, m2, m3, last_move, val, !zero  || val+PAWN_VALUE >= beta// && val<beta 
+			//!SideInEndgame_for_null(other_color(my_color)) //&& CheckForEndgame
 																										  //||val>beta
 		);
 		if (d <= 0) {
@@ -7494,8 +7543,8 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				++num_moves;
 				if (move_type == MoveGenerator::IID) {
 //					if (a != alpha) 
-					if (beta != alpha+1)
-							moves.EnableHistory = false;
+					//if (beta != alpha+1)
+					//		moves.EnableHistory = false;
 
 					int iid_depth = d * 717 >> 10;
 					if (iid_depth > d - 3) iid_depth = d - 3;
@@ -7567,10 +7616,8 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 					}
 					continue;
 				}
-				if (d <= 0 && (move_value>>9) <= __max(0,a-val+10)) {
-					c.unmake();
-					break;
-				}
+
+
 				{
 					//					intptr_t h = (intptr_t)&HashTable[((int)(Hash.low) & HASH_MASK)];
 					//		intptr_t aligned = h&-64;
@@ -7582,7 +7629,13 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 					//				for (intptr_t i = 0;i < len;i += 64)
 					//					_mm_prefetch((char *)(i + aligned), _MM_HINT_T0);
 				}
-				other_in_check = king_in_check(PlySide());
+				other_in_check = (InIID&&d<1)?false:king_in_check(PlySide());
+				if ((d <= 0 || (!other_in_check && d == 1 && (CurrentPly & 1) == 1)
+					)
+					&& (move_value >> 9) < __max(0, a - val - 30)) {
+					c.unmake();
+					break;
+				}
 
 
 				r = c;
@@ -7618,7 +7671,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 
 				if (other_in_check  || !(c.became == c.initial || is_pawn(c.became) || is_rook(c.initial) || is_king(c.initial))) {
 					if (new_depth<realdepth - 1) new_depth = realdepth - 1;
-					if (other_in_check && extensions < 1) {
+					if (other_in_check && (CurrentPly & 1) == 0 && extensions < 1) {
 						//++new_depth;
 						++realdepth;
 						++extensions;
@@ -7667,11 +7720,11 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 
 
 				else if (!other_in_check
-					&&(CurrentPly&1)==0
+					//&&(CurrentPly&1)==0
 					&& d>0 //&& d<MinDepth-2 
 					&& !in_check //&& move_type == MoveGenerator::GeneratedMoves //(iid_value >> 10 <= 0)  // || move_count>=3) 
 								 //&&  a == beta - 1
-					//&& CurrentPly>2
+					&& CurrentPly>2
 					&& (c.became == c.initial || is_pawn(c.became) || is_rook(c.initial) || is_king(c.initial))
 					&& !is_king(c.initial)
 					&& !(is_pawn(c.initial)))
@@ -8251,7 +8304,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 #ifndef IGNORE_TT
 
 		if (n != nullptr && !(n->key == (Hash ^ LightHash))) {
-			if (alpha != beta - 1) n = GetOrMakeHash(d <= 0,my_color);
+			if (!zero && !InIID) n = GetOrMakeHash(d <= 0,my_color);
 			else n = nullptr;
 		}
 #endif
@@ -8394,7 +8447,7 @@ bool test_extend_time(int x)
 	return false;
 	if (x < PAWN_VALUE - (PAWN_VALUE >> 2) && first_guess() - x >= PAWN_VALUE - (PAWN_VALUE >> 2)) {
 		int limit;
-		if (x >= ROOK_VALUE - (PAWN_VALUE >> 2)) limit = 20;
+		if (x >= NORMAL_ROOK_VALUE - (PAWN_VALUE >> 2)) limit = 20;
 		else if (x > KNIGHT_VALUE - (PAWN_VALUE >> 2)) limit = 15;
 		else limit = 8;
 		if (TimeExtendCounter >= limit) {
