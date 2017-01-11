@@ -2178,6 +2178,7 @@ HH &GetHH(bool quiescent, const RelativeMove &r)
 	//massert(h.magic == 1238972149);
 	return h;
 }
+int MinDepth;
 
 Move EmptyM;
 double HistoryParam = .2225;
@@ -2189,6 +2190,7 @@ struct MoveList {
 		int index;
 		int key;
 	};
+
 	Move moves[MAX_MOVES_PER_PLY*MAX_PLY];
 	int used[MAX_MOVES_PER_PLY*MAX_PLY];
 	int value[MAX_MOVES_PER_PLY*MAX_PLY];
@@ -2255,10 +2257,13 @@ struct MoveList {
 	void add_history(bool q)
 	{
 		//		if (CurrentPly > 10) return;
+		double mul = 128.0 / ((double)MinDepth*(double)MinDepth);
 		for (int i = first();i < base[ply]; ++i) {
 			if (!moves[i].empty() && hist[i]==0.0) {
 				//value[i] += (GetHH(q, RelativeMove(moves[i])).get() + 15) >> 4;
-				hist[i] = (GetHH(q, RelativeMove(moves[i])).get());//*.225;
+				double t = GetHH(q, RelativeMove(moves[i])).get()*mul;
+				if (t > 1 << 30) t = 1 << 30;
+				hist[i] = t;
 			}
 		}
 		best_index[ply] = second_best_index[ply] = third_best_index[ply] = fourth_best_index[ply] = -1;
@@ -2363,6 +2368,12 @@ struct MoveList {
 	{
 		return value[best_index[ply]];
 	}
+
+	int best_order_value()
+	{
+		return value[best_index[ply]]+hist[best_index[ply]];
+	}
+
 	int & best_value()
 	{
 		return value[best_index[ply]];
@@ -6549,12 +6560,14 @@ CountMoveStruct &CounterMove(bool quiescent, const RelativeMove &r)
 
 #define FUTILITY
 #define REVERSE_FUTILITY
-//#define LMR
-//#define VERIFYLMR
+//#define PARITY_PRUNING
+#define LMR
+#define VERIFYLMR
+#define DELTA_PRUNING
 #define NULL_MOVE
-//#define SIMPLE_EVAL
+#define SIMPLE_EVAL
 #define SMART_EVAL
-#define COUNTER_MOVE
+//#define COUNTER_MOVE
 #define COUNTER_CAPTURE
 #define KILLERS
 #define HISTORY_HEURISTIC
@@ -6739,7 +6752,7 @@ struct MoveGenerator
 				if (MovesOrdered.best().empty() || MovesOrdered.best_used()) continue;
 				//				if (last_piece_moved != OFF_BOARD && MovesOrdered.best().slot_taken == last_piece_moved && MovesOrdered.best().is_enpassant()==false) continue;
 				if (++count_positive > 3 ||
-					MovesOrdered.best_value() >> 10 <= 0) {
+					MovesOrdered.best_order_value() >> 10 <= 0) {
 					//				if (MovesOrdered.back_value() >> 10 <= 0) {
 					found = true;
 					break;
@@ -6895,10 +6908,6 @@ struct MoveGenerator
 			//}
 
 		case AfterKillers:
-#ifdef HISTORY_HEURISTIC
-			if (EnableHistory) 
-				MovesOrdered.add_history(quiescent);
-#endif
 
 			//			if (found || !MovesOrdered.empty()) 
 			//		state = GeneratedMoves;
@@ -7131,7 +7140,6 @@ int CheckupNodes;
 int NumFailHighNodes = 0;
 int NumberOnFirstMove = 0;
 int NumberOfFailHighMoves = 0;
-int MinDepth;
 
 bool InIID = false;
 bool Smart = false;
@@ -7498,7 +7506,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		MoveGenerator &moves = MoveGenerators[CurrentPly-1];
 		moves.EnableHistory = true;
 		moves.init(verify_pass,d//in_check ? (__max(1, d)) : d
-			, m2, m3, last_move, val, !zero  || val+PAWN_VALUE >= beta// && val<beta 
+			, m2, m3, last_move, val, !zero  || val+PAWN_VALUE >= beta || (CurrentPly&1)==1// && val<beta 
 			//!SideInEndgame_for_null(other_color(my_color)) //&& CheckForEndgame
 																										  //||val>beta
 		);
@@ -7629,13 +7637,23 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 					//				for (intptr_t i = 0;i < len;i += 64)
 					//					_mm_prefetch((char *)(i + aligned), _MM_HINT_T0);
 				}
-				other_in_check = (InIID&&d<1)?false:king_in_check(PlySide());
-				if ((d <= 0 || (!other_in_check && d == 1 && (CurrentPly & 1) == 1)
+				//pruning
+#ifdef PARITY_PRUNING
+				if ((d <= 0 && move_count > 5) || (//!zero &&
+					(!moves.EnableHistory && (CurrentPly & 1) == 1 
+					&& (move_count>9 || (move_count>3 && move_value < 0)|| (move_count>3 && a>alpha))))
+					||
+						(moves.EnableHistory && (CurrentPly & 1) == 1
+							&& (move_count>10 && move_value < 0) || (move_count>9 && a>alpha)) ||
+						(!moves.EnableHistory && (CurrentPly & 1) == 0
+							&& (move_count>12 && move_value < 0) || (move_count>10 && a>alpha))
 					)
-					&& (move_value >> 9) < __max(0, a - val - 30)) {
+					{
 					c.unmake();
 					break;
 				}
+#endif
+				other_in_check = (InIID&&d<1)?false:king_in_check(PlySide());
 
 
 				r = c;
@@ -7644,7 +7662,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				//moves.next calls c.make()
 				int new_depth = d - 1;
 
-				int lmr_dec = 0;   //middle
+				int lmr_dec = moves.EnableHistory?-3:0;   //middle
 				int delay_inc = 1; //
 				bool n_late = false;
 
@@ -7663,8 +7681,9 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 					//					delay_inc = 1;
 				}
 //*/
-//							if (d<MinDepth >> 2) delay_inc = 0;
-
+				if (!moves.EnableHistory && d < MinDepth >> 2) {
+					delay_inc = 0;
+				}
 				//				lmr_dec = 1;
 				//				delay_inc = 0;
 
@@ -7720,6 +7739,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 
 
 				else if (!other_in_check
+					//&& !moves.EnableHistory
 					//&&(CurrentPly&1)==0
 					&& d>0 //&& d<MinDepth-2 
 					&& !in_check //&& move_type == MoveGenerator::GeneratedMoves //(iid_value >> 10 <= 0)  // || move_count>=3) 
@@ -7744,11 +7764,11 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 									if (//lmr_dec>=0 && 
 										d > 3 && reduced + lmr_dec * 2 > 7) {
 										--new_depth;
-										++delay;
-										//if (d > 4 && reduced + lmr_dec * 3 > 13) {
-										//	--new_depth;
-										//	++delay;
-										//}
+										delay += delay_inc;//++delay;
+										if (d > 4 && reduced + lmr_dec * 3 > 13) {
+											--new_depth;
+											delay += delay_inc;//++delay;
+										}
 									}
 								}
 							}
@@ -7771,30 +7791,43 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 					else {
 						if (c.slot_taken != NO_SLOT) {
 							//pv, non capture
-							//if (move_value <= 0 && move_count + lmr_dec > 2) // && CheckForEndgame 
-							//{
-							//	++reduced;
-							//	--new_depth;
-							//	++delay;
-							//	if (//lmr_dec >= 0 &&
-							//		d > 2 && reduced + lmr_dec > 3) {
-							//		--new_depth;
-							//		delay += delay_inc;
-							//	}
-							//}
+							if (move_value <= 0 && move_count + lmr_dec > 2) // && CheckForEndgame 
+							{
+								++reduced;
+								--new_depth;
+								delay += delay_inc;//++delay;
+								if (//lmr_dec >= 0 &&
+									d > 2 && reduced + lmr_dec > 3) {
+									--new_depth;
+									delay += delay_inc;
+								}
+							}
 						}
 						else {
 							//pv, capture
-							//if (move_value <= 0 && move_count > 2) // && CheckForEndgame 
-							//{
-							//	++reduced;
-							//	--new_depth;
-							//	++delay;
-							//}
+							if (move_value <= 0 && move_count > 2) // && CheckForEndgame 
+							{
+								++reduced;
+								--new_depth;
+								++delay;
+							}
 						}
 					}
 #endif
 				}//else if (other)
+#ifdef DELTA_PRUNING
+				if ((d <= 0 || (!other_in_check && new_depth <= 2 && (CurrentPly & 1) == 1)//delta
+					)
+					&& (move_value >> 9)*(new_depth>0?2+new_depth:2)>>2 < __max(0, a - val - 30)) {
+					c.unmake();
+					continue;
+				}
+#else
+				if (d <= 0) {
+					c.unmake();
+					continue;
+				}
+#endif
 #ifdef LMR
 				bool wasIID = InIID;
 				//				if (delay>0) {
@@ -7819,7 +7852,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 
 
 #ifdef VERIFYLMR
-					if (!repeat && delay) {
+					if (false && !repeat && delay) {
 						if (a != -INF) {
 							//							val1 = -NegaScout(n_inpv, verify, -beta, -a, new_depth, false, somewhere_in_null, beta_real, alpha_real, Board[c.to],other_in_check,realdepth-1);
 							val1 = -NegaScout(n_inpv, verify, -(a + 1), -a, new_depth, n_late, somewhere_in_null, -a, r, other_in_check, realdepth - 1, extensions);
@@ -8161,7 +8194,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				InIID = wasIID;
 				dec_ply();
 				c.unmake();
-				//if (d <= 0 && move_count>__max(((2+(d>>1))<<1)+1,0)) break;
+				if (d <= 0 && move_count>4) break;
 			}
 
 			if (g >= beta && 
