@@ -2360,6 +2360,10 @@ struct MoveList {
 	{
 		return best_index[ply] == -1 || used[best_index[ply]]!=0;
 	}
+	void mark_used()
+	{
+		used[best_index[ply]] = -1;
+	}
 	void clear_best()
 	{
 		if (best_index[ply] != -1) used[best_index[ply]] = 1;
@@ -2406,6 +2410,19 @@ struct MoveList {
 		for (int i = first();i < base[ply];++i)
 		{
 			if (!moves[i].empty()) {
+				++count;
+				used[i] = 0;
+				hist[i] = 0;
+			}
+			total[ply] = count;
+		}
+	}
+	void reveal_after_iid()
+	{
+		int count = 0;
+		for (int i = first();i < base[ply];++i)
+		{
+			if (!moves[i].empty() && used[i] != -1) {
 				++count;
 				used[i] = 0;
 				hist[i] = 0;
@@ -2542,7 +2559,7 @@ int sort_pv(const Move &m)
 		if (MovesOrdered[i] == m && MovesOrdered.used[i]!=1) {
 		//if (MovesOrdered[i].from == m.from && MovesOrdered[i].to == m.to && MovesOrdered[i].became == m.became) {
 				//			MovesOrdered.push(MovesOrdered[i], MovesOrdered.value[i]);
-			MovesOrdered.used[i]=1;
+			MovesOrdered.used[i]=-1;
 			return i;
 		}
 	return -1;
@@ -2569,7 +2586,7 @@ int sort_pv(const HashMove &m)
 		if (m == MovesOrdered[i] && MovesOrdered.used[i] != 1) {
 		//if (MovesOrdered[i].from == m.from && MovesOrdered[i].to == m.to && MovesOrdered[i].became == m.became) {
 			//			MovesOrdered.push(MovesOrdered[i], MovesOrdered.value[i]);
-			MovesOrdered.used[i] = 1;
+			MovesOrdered.used[i] = -1;
 			//			MovesOrdered[i].clear();
 			return i;
 		}
@@ -2590,7 +2607,7 @@ int counter_capture_pv(const HashMove &m)
 			}
 		}
 
-	if (index!=-1)MovesOrdered.used[index] = 1;
+	if (index!=-1)MovesOrdered.used[index] = -1;
 	return index;
 }
 
@@ -6571,7 +6588,8 @@ CountMoveStruct &CounterMove(bool quiescent, const RelativeMove &r)
 #define COUNTER_CAPTURE
 #define KILLERS
 #define HISTORY_HEURISTIC
-
+//#define MAXIMUM_IID
+//#define SHORT_CIRCUIT_IID
 //#define IGNORE_TT
 
 
@@ -6734,12 +6752,23 @@ struct MoveGenerator
 					if (mn != -1 && hash_move_scores[1] != INF) MovesOrdered.value[mn] = hash_move_scores[1];
 				}
 			}
-			if (//!initial_ok && 
-				try_iid) {
+			if (try_iid) {
 				return 0;
 			}
 		case IID:
-
+#ifdef SHORT_CIRCUIT_IID
+			if (try_iid) {
+				MovesOrdered.reveal_after_iid();
+				if (num_killer>0) {
+					int mn = sort_pv(killer_moves[0]);
+					if (mn != -1 && hash_move_scores[0] != INF)MovesOrdered.value[mn] = hash_move_scores[0];
+					if (num_killer>1) {
+						mn = sort_pv(killer_moves[1]);
+						if (mn != -1 && hash_move_scores[1] != INF) MovesOrdered.value[mn] = hash_move_scores[1];
+					}
+				}
+			}
+#endif
 
 			state = PositiveCaptures;
 		case PositiveCaptures:
@@ -7506,7 +7535,12 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		MoveGenerator &moves = MoveGenerators[CurrentPly-1];
 		moves.EnableHistory = true;
 		moves.init(verify_pass,d//in_check ? (__max(1, d)) : d
-			, m2, m3, last_move, val, !zero  || val+PAWN_VALUE >= beta || (CurrentPly&1)==1// && val<beta 
+			, m2, m3, last_move, val, 
+#ifdef MAXIMUM_IID
+			true
+#else
+			!zero  || val+PAWN_VALUE >= beta || (CurrentPly&1)==1// && val<beta 
+#endif
 			//!SideInEndgame_for_null(other_color(my_color)) //&& CheckForEndgame
 																										  //||val>beta
 		);
@@ -7570,8 +7604,13 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 						try {
 							MovesOrdered.unmark();
 							val1 = g;//(alpha != beta - 1 ? g : (beta - 1));
+#ifdef SHORT_CIRCUIT_IID
+							while (MovesOrdered.find_best())
+#else
 							while (MovesOrdered.next_unmarked())
+#endif
 							{
+								if (MovesOrdered.best_used()) continue;
 								c = MovesOrdered.best();
 								if (c.empty()) continue;
 								c.make();
@@ -7596,16 +7635,50 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 								//if (val2 > val1) val1 = val2;
 								int val2 = -NegaScout(false, verify, -beta, -a, iid_depth, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, iid_depth, INF);
 								dec_ply();
-								//if (val2 > beta) {
-								//	InIID=in_iid_temp;
-								//	val2 = -NegaScout(verify, -beta, -beta+1, d-1, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, realdepth-1,extensions);
-								//   if (val2 > beta) {
-								//		val1 = val2;
-								//		goto register_move;
-								//	}
+								if (val2 > beta) {
+									InIID=in_iid_temp;
+									val2 = -NegaScout(in_pv,verify, -beta, -a, d-1, false, somewhere_in_null, -a, RelativeMove(c), other_in_check, realdepth-1,extensions);
+									MovesOrdered.mark_used();
+#ifdef SHORT_CIRCUIT_IID
+									if (val2 > beta) {
+										val1 = val2;
+										goto register_move;
+									}
+									else {
+										if (val1 > g) {
+											g = val1;
+											second_best_move = best_move;
+											best_move = c;
+											best_move_type = move_type;
+											//					if (CurrentPly == 2) Ply0Move = c;
+											best_value = move_value;
+										}
+										if (g > a) {
+#ifdef PV_ARRAY
+											if (!InIID && !zero && d>0) {
+												pv[CurrentPly - 2][CurrentPly - 2].move = c;
+												pv[CurrentPly - 2][CurrentPly - 2].second = second_best_move;
+												pv[CurrentPly - 2][CurrentPly - 2].depth = d;
+												pv[CurrentPly - 2][CurrentPly - 2].value = g;
+												if (d > 1) {
+													for (int i = CurrentPly - 1;i <= pv_length[CurrentPly - 1];++i)pv[i][CurrentPly - 2] = pv[i][CurrentPly - 1];
+													pv_length[CurrentPly - 2] = __max(CurrentPly - 1, pv_length[CurrentPly - 1]);
+												}
+												else pv_length[CurrentPly - 2] = CurrentPly - 1;
+											}
+#else
+											if (!InIID && !zero && d>0)
+												pv[CurrentPly - 2][CurrentPly - 2].move = c;
+#endif
+										}
+										if (g > a) {
+											a = g;
+										}
+									}
+#endif
 								//	InIID = true;
 								//	val1 = __max(val1, val2);
-								//}
+								}
 								MovesOrdered.unmarked_value() = (val2 - val) << 10;
 								c.unmake();
 							}
@@ -7663,7 +7736,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				int new_depth = d - 1;
 
 				int lmr_dec = moves.EnableHistory?-3:0;   //middle
-				int delay_inc = 1; //
+				int delay_inc = moves.EnableHistory ? 1 : 0; //
 				bool n_late = false;
 
 //				if (d >= MinDepth - 3) { //root
