@@ -9,6 +9,7 @@
 #include <math.h>
 #include <string.h>
 
+//#define NDEBUG
 #ifdef __GNUC__
 #define __min(x,y) ((x)<(y)?(x):(y))
 #define __max(x,y) ((x)>=(y)?(x):(y))
@@ -3330,24 +3331,31 @@ void calc_pawns()
 
 #define FUTILITY
 #define REVERSE_FUTILITY
+
 //#define PARITY_PRUNING
+
 #define LMR
 #define VERIFYLMR
 #define DELTA_PRUNING
 #define NULL_MOVE
+
 //#define SIMPLE_EVAL
 //#define SAVE_VALUES
+
 #define SMART_EVAL
 #define COUNTER_MOVE
+
 //#define COUNTER_CAPTURE
+
 #define KILLERS
 #define HISTORY_HEURISTIC
 //#define MAXIMUM_IID
-//#define NO_IID
+#define NO_IID
 //#define IID_CHOICE !zero  || val+PAWN_VALUE >= beta
 //#define IID_CHOICE CurrentPly < 4|| all_node || !zero || val + PAWN_VALUE >= beta || n==nullptr || n->move.empty()
 //#define IID_CHOICE  CurrentPly < 3 || (all_node) ||n==nullptr || n->move.empty()
-#define IID_CHOICE n==nullptr || n->move.empty() || !zero  || val+PAWN_VALUE >= beta
+//#define IID_CHOICE n==nullptr || n->move.empty() || !zero  || val+PAWN_VALUE >= beta
+#define IID_CHOICE ((n==nullptr || n->move.empty()) && (!zero  || val+PAWN_VALUE >= beta) && CurrentPly < 4)
 //#define SHORT_CIRCUIT_IID
 //#define IGNORE_TT
 //#define PV_ARRAY
@@ -8191,10 +8199,10 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 					}
 
 #else
-					bool wasIID = InIID;
-					bool repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
-					inc_ply();
-					try {
+//					bool wasIID = InIID;
+//					bool repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
+//					inc_ply();
+//					try {
 #endif
 #else
 				bool wasIID = InIID;
@@ -8772,7 +8780,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 			}
 		}
 		/* Fail low result implies an upper bound */
-		else if (g < alpha) {
+		else if (g <= alpha) {
 			//if (alpha_real) 
 			{
 				n->set_upper(d, g);
