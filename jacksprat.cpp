@@ -8,8 +8,44 @@
 #include <fstream>
 #include <math.h>
 #include <string.h>
+#include <xmmintrin.h>
 
-//#define NDEBUG
+const int NUM_ADJ=30;
+float ADJ[NUM_ADJ] =
+{
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+    1.0f,
+};
+
+#define NDEBUG
 #ifdef __GNUC__
 #define __min(x,y) ((x)<(y)?(x):(y))
 #define __max(x,y) ((x)>=(y)?(x):(y))
@@ -24,7 +60,7 @@
 #define BISHOP_VALUE 330
 #define ROOK_VALUE 500
 #define QUEEN_VALUE 900
-#define KING_CASTLING_BONUS 15
+#define KING_CASTLING_BONUS 10
 */
 
 //#define PAWN_VALUE 100
@@ -70,7 +106,7 @@ sf 6
 #define EQUEEN_VALUE (int)(2650/1.88)
 
 
-#define KING_CASTLING_BONUS 15
+#define KING_CASTLING_BONUS 10
 
 
 #define LOGGING
@@ -128,6 +164,12 @@ int MoveNumber = 0;
 #endif
 
 enum Colors { LIGHT, DARK, NUM_COLORS = 2, NO_COLOR = 2 };
+int FORWARD_DIRECTION[2] = {-10,10}; 
+int FORWARD_LEFT_DIRECTION[2] = {-11,9}; 
+int FORWARD_RIGHT_DIRECTION[2] = {-9,11}; 
+int BACKWARD_DIRECTION[2] = {10,-10}; 
+int BACKWARD_LEFT_DIRECTION[2] = {9,-11}; 
+int BACKWARD_RIGHT_DIRECTION[2] = {11,-9}; 
 
 inline Colors other_color(Colors n)
 {
@@ -408,23 +450,52 @@ const PieceType ChangePieceOnMove[] =
 //
 
 enum MaterialIndexes { DONT_COUNT = 0, PAWN_COUNT = 1, MAJOR_MINOR_COUNT = 2, NUM_MATERIAL_INDEXES = 3 };
-
-const MaterialIndexes PieceCountIndex[] =
+/*
+	EMPTY = 0,
+	KING_NOT_MOVED = 1,
+	KING = 2,
+	KING_CASTLED = 3,
+	PAWN = 4,
+	PAWN_JUST_ADVANCED = 5,
+	KNIGHT = 6,
+	BISHOP = 7,
+	ROOK_NOT_MOVED = 8,
+	ROOK = 9,
+	QUEEN = 10,
+	NUM_PIECE_TYPES = 11,
+ */
+const MaterialIndexes PieceValueIndex[] =
 {
-	DONT_COUNT,
-	DONT_COUNT,
-	DONT_COUNT,
-	DONT_COUNT,
-	PAWN_COUNT,
-	PAWN_COUNT,
-	MAJOR_MINOR_COUNT,
-	MAJOR_MINOR_COUNT,
-	MAJOR_MINOR_COUNT,
-	MAJOR_MINOR_COUNT,
-	MAJOR_MINOR_COUNT,
+	DONT_COUNT, //empty
+	DONT_COUNT, //king_not_moved
+	DONT_COUNT, //king
+	DONT_COUNT, //king_castled
+	PAWN_COUNT, //pawn
+	PAWN_COUNT, //pawn_just_advanced
+	MAJOR_MINOR_COUNT, //knight
+	MAJOR_MINOR_COUNT, //bishop
+	MAJOR_MINOR_COUNT, //rook_not_moved
+	MAJOR_MINOR_COUNT, //rook
+	MAJOR_MINOR_COUNT, //queen
+};
+
+const PieceType PieceCountIndex[] =
+{
+	EMPTY, //empty
+	EMPTY, //king_not_moved
+	EMPTY, //king
+	EMPTY, //king_castled
+	PAWN, //pawn
+	PAWN, //pawn_just_advanced
+	KNIGHT, //knight
+	BISHOP, //bishop
+	ROOK, //rook_not_moved
+	ROOK, //rook
+	QUEEN, //queen
 };
 
 int MaterialSums[NUM_COLORS][NUM_MATERIAL_INDEXES];
+int PieceCounts[NUM_COLORS][NUM_PIECE_TYPES];
 
 const Pos enpassant_table[BOARD_SIZE] =
 {
@@ -593,10 +664,10 @@ const PieceSquareTable EmptySquareTable =
 };
 
 #define SCALE_PST 
-#define PAWN_SCALE 
+#define PAWN_SCALE >>2
 #define END_PAWN_SCALE 
 #define HAIR_TABLES 
-//#define HAIR_PAWNS
+#define HAIR_PAWNS
 
 #ifdef HAIR_TABLES
 const PieceSquareTable KingEndSquareTableL = {
@@ -1529,8 +1600,14 @@ void board_consistent()
 
 inline bool is_pawn_at(Pos p, Colors c)
 {
-	PieceSlotType s = Board[c];
+	PieceSlotType s = Board[p];
 	return is_piece(s) && color(s) == c && is_pawn(Players.pieces[s]);
+}
+
+inline bool is_other_color_pawn_at(Pos p, Colors c)
+{
+	PieceSlotType s = Board[p];
+	return is_piece(s) && color(s) != c && is_pawn(Players.pieces[s]);
 }
 
 inline void set_position(Pos p, PieceSlotType s)
@@ -1556,7 +1633,7 @@ uint64_t rand64() {
 	return brand() ^ ((uint64_t)brand() << 15) ^ ((uint64_t)brand() << 30) ^ ((uint64_t)brand() << 45) ^ ((uint64_t)brand() << 60);
 }
 
-#define SMALL_HASH
+//#define SMALL_HASH
 
 #ifdef SMALL_HASH
 struct HashType
@@ -1656,6 +1733,10 @@ const Pos SquareToRowIndex[120] =
 	0,0,0,0,0,0,0,0,0,0,
 
 };
+
+const int NumRowThreats=9;
+int RowThreats[NUM_COLORS][NumRowThreats];
+
 //for increments +/-10
 const Pos SquareToColIndex[120] =
 {
@@ -1672,6 +1753,8 @@ const Pos SquareToColIndex[120] =
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
 };
+const int NumColThreats=9;
+int ColThreats[NUM_COLORS][NumColThreats];
 
 const Pos SquareToDiagLeftIndex[120] =
 {
@@ -1688,6 +1771,8 @@ const Pos SquareToDiagLeftIndex[120] =
 	0,0,0,0,0,0,0,0,0,0,
 	0,0,0,0,0,0,0,0,0,0,
 };
+const int NumDiagLeftThreats=16;
+int DiagLeftThreats[NUM_COLORS][NumDiagLeftThreats];
 
 //for increments +/-9
 const Pos SquareToDiagRightIndex[120] =
@@ -1706,6 +1791,28 @@ const Pos SquareToDiagRightIndex[120] =
 	0,0,0,0,0,0,0,0,0,0,
 };
 
+
+
+const int NumDiagRightThreats=16;
+int DiagRightThreats[NUM_COLORS][NumDiagRightThreats];
+
+void ChangeThreats(Colors c, PieceType p, Pos pos, int delta)
+{
+    switch(p){
+        case QUEEN:
+            RowThreats[c][SquareToRowIndex[pos]]+=delta;
+            ColThreats[c][SquareToColIndex[pos]]+=delta;
+        case BISHOP:
+            DiagLeftThreats[c][SquareToDiagLeftIndex[pos]]+=delta;
+            DiagRightThreats[c][SquareToDiagRightIndex[pos]]+=delta;
+            return;
+        case ROOK_NOT_MOVED:
+        case ROOK:
+            RowThreats[c][SquareToRowIndex[pos]]+=delta;
+            ColThreats[c][SquareToColIndex[pos]]+=delta;
+            return;
+    }
+}
 Pos RookDirection[h1 + 1][h1 + 1];
 Pos BishopDirection[h1 + 1][h1 + 1];
 Pos QueenDirection[h1 + 1][h1 + 1];
@@ -1908,17 +2015,27 @@ struct Move
 			int material_threat = MaterialSums[other_side][MAJOR_MINOR_COUNT];
 			if (move_flags == NotCastling) {
 				if (initial == KING_NOT_MOVED || initial == ROOK_NOT_MOVED) {
+                int pawn_count = PieceCounts[my_side][PieceCountIndex[PAWN]];
+                pawn_count = __max(__min(pawn_count,6)-1,0);
 					switch (ways_can_castle(color(Board[from]))) {
 						case 1: 
-							bonus -= 30* material_threat>>10; 
+							bonus -= (pawn_count)*4* material_threat>>10;//up to 69 
 							break;
 						case 2: 
-							if (initial == KING_NOT_MOVED) bonus -= 30 * material_threat >> 10; 
-							else bonus -= 30 * material_threat >> 10;
+							if (initial == KING_NOT_MOVED) bonus -= (pawn_count)*4 * material_threat >> 10; 
+							else bonus -= pawn_count*6 * material_threat >> 12;
 					}
 				}
-				else if (became == KING || became == KING_CASTLED) bonus -= 12 * material_threat >> 10;
-			}
+				else if (became == KING || became == KING_CASTLED) {
+                   int pawn_count = PieceCounts[my_side][PieceCountIndex[PAWN]];
+                   pawn_count = __max(__min(pawn_count,6)-2,0);
+                   bonus -= pawn_count * material_threat >> 10;
+                }
+			}else if(move_flags == CastleLeft || move_flags == CastleRight){
+                int pawn_count = PieceCounts[my_side][PieceCountIndex[PAWN]];
+                pawn_count = __max(__min(pawn_count,6)-1,0);
+                bonus += (pawn_count)*4* material_threat>>10; 
+            }
 		}
 		//if (move_flags == Extend) bonus += 8;
 		//*/
@@ -2242,7 +2359,8 @@ struct MoveList {
 	{
 		++total[ply];
 		used[base[ply]] = 0;
-		value[base[ply]] = v;
+        m.movement_bonuses();
+		value[base[ply]] = v+(m.bonus*308);
 		hist[base[ply]] = 0.0;
 		moves[base[ply]++] = m;
 		assert(base[ply] < MAX_MOVES_PER_PLY*MAX_PLY);
@@ -2666,9 +2784,9 @@ struct RepeatBin
 
 
 struct RepeatListStruct {
-	int bin_history[MAX_MOVES];
-	int history;
 	RepeatBin bins[REPEAT_BINS];
+	int history;
+	int bin_history[MAX_MOVES];
 
 	RepeatListStruct() {
 		clear();
@@ -2878,7 +2996,7 @@ void simple_calc()
 			//	__max(EValuePerPiece[Players.pieces[Pins[c][j]]] - EValuePerPiece[Players.pieces[Pinners[c][j]]], 0) >> 2;
 		//}
 		for (int r = KNIGHT1;r <= QUEENP;++r) {
-			if (Players.pinned[r] != NotPinned) EvalTemp[c] += .25*mobility((PieceSlotType)(r + base));
+			if (Players.pinned[r] != NotPinned) EvalTemp[c] += .5*mobility((PieceSlotType)(r + base));
 		}
 	}
 	if (MaterialSums[LIGHT][PAWN_COUNT] == 0 && MaterialSums[DARK][PAWN_COUNT] == 0 &&
@@ -2920,17 +3038,17 @@ int positive_square_value_of_piece(Colors c, PieceType p, Pos s);
 
 int value_of_piece(Colors c, PieceType p, Pos s)
 {
-	return positive_square_value_of_piece( c,  p,  s)+ (CheckForEndgame ? ValuePerPiece[p] : EValuePerPiece[p])*3;
+	return positive_square_value_of_piece( c,  p,  s)+ (CheckForEndgame ? ValuePerPiece[p] : EValuePerPiece[p]);
 }
 
 int value_of_piece(PieceSlotType t)
 {
-	return (color(t), Players.pieces[t], Players.positions[t]);
+	return value_of_piece(color(t), Players.pieces[t], Players.positions[t]);
 }
 
 int value_of_piece(Pos p)
 {
-	return (color(Board[p]), Players.pieces[Board[p]], p);
+	return value_of_piece(color(Board[p]), Players.pieces[Board[p]], p);
 }
 double sqrt_table[] = {
 	0,
@@ -3001,10 +3119,79 @@ double sqrt_table[] = {
 
 };
 
+#define SQRT_CONV(x) (int)(x*4-5+x*x/2.0)
+int int_sqrt_table[] = {
+	SQRT_CONV(0),
+	SQRT_CONV(1),
+	SQRT_CONV(1.4142135624),
+	SQRT_CONV(1.7320508076),
+	SQRT_CONV(2),
+	SQRT_CONV(2.2360679775),
+	SQRT_CONV(2.4494897428),
+	SQRT_CONV(2.6457513111),
+	SQRT_CONV(2.8284271247),
+	SQRT_CONV(3),
+	SQRT_CONV(3.1622776602),
+	SQRT_CONV(3.3166247904),
+	SQRT_CONV(3.4641016151),
+	SQRT_CONV(3.6055512755),
+	SQRT_CONV(3.7416573868),
+	SQRT_CONV(3.8729833462),
+	SQRT_CONV(4),
+	SQRT_CONV(4.1231056256),
+	SQRT_CONV(4.2426406871),
+	SQRT_CONV(4.3588989435),
+	SQRT_CONV(4.472135955),
+	SQRT_CONV(4.582575695),
+	SQRT_CONV(4.6904157598),
+	SQRT_CONV(4.7958315233),
+	SQRT_CONV(4.8989794856),
+	SQRT_CONV(5),
+	SQRT_CONV(5.0990195136),
+	SQRT_CONV(5.1961524227),
+	SQRT_CONV(5.2915026221),
+	SQRT_CONV(5.3851648071),
+	SQRT_CONV(5.4772255751),
+	SQRT_CONV(5.5677643628),
+	SQRT_CONV(5.6568542495),
+	SQRT_CONV(5.7445626465),
+	SQRT_CONV(5.8309518948),
+	SQRT_CONV(5.9160797831),
+	SQRT_CONV(6),
+	SQRT_CONV(6.0827625303),
+	SQRT_CONV(6.164414003),
+	SQRT_CONV(6.2449979984),
+	SQRT_CONV(6.3245553203),
+	SQRT_CONV(6.4031242374),
+	SQRT_CONV(6.4807406984),
+	SQRT_CONV(6.5574385243),
+	SQRT_CONV(6.6332495807),
+	SQRT_CONV(6.7082039325),
+	SQRT_CONV(6.7823299831),
+	SQRT_CONV(6.8556546004),
+	SQRT_CONV(6.9282032303),
+	SQRT_CONV(7),
+	SQRT_CONV(7.0710678119),
+	SQRT_CONV(7.1414284285),
+	SQRT_CONV(7.2111025509),
+	SQRT_CONV(7.2801098893),
+	SQRT_CONV(7.3484692283),
+	SQRT_CONV(7.4161984871),
+	SQRT_CONV(7.4833147735),
+	SQRT_CONV(7.5498344353),
+	SQRT_CONV(7.6157731059),
+	SQRT_CONV(7.6811457479),
+	SQRT_CONV(7.7459666924),
+	SQRT_CONV(7.8102496759),
+	SQRT_CONV(7.874007874),
+	SQRT_CONV(7.9372539332),
+	SQRT_CONV(8),
+};
+
 
 int Safety(Colors c, Pos root_pos);
 bool king_in_check(Colors c);
-void calc_pawns()
+void calc_pawns(bool q=false)
 {
 	double opening_multiplier = 1.0;
 	if (history_len <= 13) opening_multiplier = .4*(sqrt_table[13-history_len])+1;
@@ -3016,6 +3203,7 @@ void calc_pawns()
 	EvalTemp[LIGHT] = EvalTemp[DARK] = 0;
 	if (PawnsDirty()) 
 	{
+		int EscapedPawn=10; Colors escapeColor;
 		//for (int i = 0;i < 10;++i) PromotionTempo[i] = NUM_COLORS;
 		PawnsTemp[LIGHT] = PawnsTemp[DARK] = 0;
 
@@ -3105,8 +3293,11 @@ void calc_pawns()
 						//pr is a passed pawn
 						//if king can't reach pawn, then count promotion early
 						pawn_weight[c][r] = 6;
-						//if (KP_END[oc] && __min(5, pr - 1) < ChebyshevDistance(pp + 10 * (pr - 1)*(c == LIGHT ? -1 : 1), Players.positions[KINGP + other_base]) - (PlySide() == oc ? 1 : 0))
+						if (KP_END[oc] && __min(5, pr - 1) < ChebyshevDistance(pp + 10 * (pr - 1)*(c == LIGHT ? -1 : 1), Players.positions[KINGP + other_base]) - (PlySide() == oc ? 1 : 0)){
+							int escape = (__min(4, pr - 2) << 1) + (PlySide() == oc ? 1 : 0);
+							if (escape<EscapedPawn) {EscapedPawn=escape; escapeColor=(Colors)c; }
 						//	PromotionTempo[(__min(4, pr - 2) << 1) + (PlySide() == oc ? 1 : 0)] = (Colors)c;//PawnsTemp[c] += QUEEN_VALUE-(82+30+90);
+						}
 						PawnsTemp[c] += //pawn_tables[c][pp] + 9;//
 							.25*((7 - pr) * 40);
 						if (LowestPassed[c] > pr) LowestPassed[c] = pr;//calculate nearest passed pawn for bonus for rook on other side of passed pawn
@@ -3116,6 +3307,7 @@ void calc_pawns()
 
 			//		*/
 		}
+		if (EscapedPawn < 10) PawnsTemp[escapeColor] += (QUEEN_VALUE - (82 + 30 + 90))>>3;
 		//for (int i = 0;i < 10;++i) {
 		//	if (PromotionTempo[i] != NUM_COLORS) {
 		//		PawnsTemp[PromotionTempo[i]] += (QUEEN_VALUE - (82 + 30 + 90))>>3;
@@ -3126,9 +3318,9 @@ void calc_pawns()
 	for (int c = LIGHT;c < NUM_COLORS;++c) {
 		int base = base_by_color((Colors)c);
 		int o = 1 - c;
-
+//static int see_count=0;
 		const Pos king_col = SquareToColIndex[Players.pieces[KINGP + base]];
-		EvalTemp[c] += opening_multiplier*eval_king(king_col, (Colors)c, (Colors)o);
+	//	EvalTemp[c] += opening_multiplier*eval_king(king_col, (Colors)c, (Colors)o);
 
 		//for (int r = PAWN1;r < NUM_UNCOLORED_PIECE_SLOTS;++r) {
 		//	if (is_piece((PieceSlotType)(r + base))) {
@@ -3136,17 +3328,36 @@ void calc_pawns()
 		//		EvalTemp[c] += (CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t])
 		//			+ positive_square_value_of_piece((Colors)c, t, Players.positions[r + base]);
 		//	}
-			//for (int r = PAWN1;r < NUM_UNCOLORED_PIECE_SLOTS;++r) {
-			//	if (Players.pieces[base + r] != EMPTY) {
-			//		EvalTemp[c] += CALC_SEE(Players.positions[base+r]);
-			//	}
-			//}
+			if (q && c==_PlySide
+            )
+            //if (c==_PlySide)
+            { 
+                int max_see=0;
+//                    ++see_count;
+                for (int r = NUM_UNCOLORED_PIECE_SLOTS-2;r >= PAWN1;--r) {
+                    if (Players.pieces[base + r] != EMPTY) {
+                        //EvalTemp[c] += SEE(Players.positions[base+r]);
+                        if (max_see==0 || 
+                        ValuePerPiece[Players.pieces[base+r]]+ positive_square_value_of_piece((Colors)c, Players.pieces[base+r], base+r)>max_see )
+                            {
+                            int see = SEE(Players.positions[base+r]);
+//                            printf("****%4d  %d\n",see_count,see);
+                            if (see>max_see) max_see=see;
+                        }
+                        
+                    }
+                }
+                if (max_see>0){
+                    //if (c==_PlySide) //max_see>>=1;
+                        EvalTemp[c] -= max_see;
+                }
+            }
 			//*/
 		//}
 		//CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t];
 //square_value_of_piece(side, slot_side, t, p);
 		{
-//#define KING_SAFETY
+#define KING_SAFETY
 #ifdef KING_SAFETY
 
 			Pos king_pos = Players.positions[base + KINGP];
@@ -3160,11 +3371,26 @@ void calc_pawns()
 			}
 			for (Pos x = -1;x <= 1;++x) {
 				for (Pos y = ys;y <= ye;y += 10) {
-					//if ((x==0 && y==0) || Board[king_pos + x + y] == EMPTY) {
-						units += Safety((Colors)c, king_pos + x + y);
-					//}
+					if ((x==0 && y==0) || Board[king_pos + x + y] == EMPTY) {
+                        if (Board[king_pos + x + y] == NO_SLOT) {
+                            units += Safety((Colors)c, king_pos + x + y);
+                        }
+                    }
 				}
 			}
+			static const int SafetyTable[100] = {
+				0,  0,   2,   2,   3,   3,   4,   5,  5,  6,
+				6,  7,  8,  8,  9,  9,  10,  11,  11,  12,
+				12,  13,  14,  14,  14,  15, 15, 16, 17, 17,
+				18, 18, 20, 20, 21, 21, 22, 23, 23, 24,
+				24, 25, 25, 26, 26, 27, 27, 28, 28, 29,
+				29, 30, 30, 30, 31, 31, 32, 32, 33, 33,
+				33, 34, 34, 34, 34, 34, 34, 34, 34, 34,
+				34, 34, 34, 34, 34, 34, 34, 34, 34, 34,
+				34, 34, 34, 34, 34, 34, 34, 34, 34, 34,
+				34, 34, 34, 34, 34, 34, 34, 34, 34, 34
+			};			
+/*
 			static const int SafetyTable[100] = {
 				0,  0,   1,   2,   3,   5,   7,   9,  12,  15,
 				18,  22,  26,  30,  35,  39,  44,  50,  56,  62,
@@ -3177,7 +3403,8 @@ void calc_pawns()
 				500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
 				500, 500, 500, 500, 500, 500, 500, 500, 500, 500
 			};			
-			EvalTemp[c] -= SafetyTable[units]*4;
+ */
+			EvalTemp[c] -= SafetyTable[units];
 			/*
 			//king_safety
 			Pos king_pos = Players.positions[base + KINGP];
@@ -3214,25 +3441,22 @@ void calc_pawns()
 			}
 		}
 
-		/*	int nonlinear=0;
-		if (count_slot(base + QUEENP) + count_slot(base + ROOK1) + count_slot(base + ROOK2) > 1) {
-		nonlinear = (5 * count_slot(base + QUEENP) + ((count_slot(base + ROOK1) + count_slot(base + ROOK2))<<1))*PAWN_VALUE>>5;
-		}
-		*/
+
 		//if (PawnsDirty()) 
 		{
 		}
-		//		if (Players.pieces[BISHOP1 + base] != EMPTY && Players.pieces[BISHOP2 + base] != EMPTY) EvalTemp[c] += 30;
-		//		if (Players.pieces[KNIGHT1 + base] != EMPTY && Players.pieces[KNIGHT2 + base] != EMPTY) EvalTemp[c] += 30;
+				if (Players.pieces[BISHOP1 + base] != EMPTY && Players.pieces[BISHOP2 + base] != EMPTY) EvalTemp[c] += 30;
+				if (Players.pieces[KNIGHT1 + base] != EMPTY && Players.pieces[KNIGHT2 + base] != EMPTY) EvalTemp[c] += 30;
 		//mobility disabled
-		//NumPins[c] = calc_pins((Colors)c, Players.positions[KINGP + base], Pins[c], Pinners[c]);
+		NumPins[c] = calc_pins((Colors)c, Players.positions[KINGP + base], Pins[c], Pinners[c]);
 					   ///*		
-		//for (int j = NumPins[c] - 1;j >= 0;--j) {
-		//	EvalTemp[c] -= __max(EValuePerPiece[Players.pieces[Pins[c][j]]] - (EValuePerPiece[Players.pieces[Pinners[c][j]]]>>1), 0) >> 3;
-		//}
+		for (int j = NumPins[c] - 1;j >= 0;--j) {
+			EvalTemp[c] -= __max(EValuePerPiece[Players.pieces[Pins[c][j]]] - (EValuePerPiece[Players.pieces[Pinners[c][j]]]>>1), 0) >> 3;
+		}
 		for (int r = KNIGHT1;r <= QUEENP;++r) {
-			//if (Players.pinned[r] != NotPinned) 
-				EvalTemp[c] += .5*mobility((PieceSlotType)(r + base));
+			if (Players.pinned[r] != NotPinned) 
+//				EvalTemp[c] += .125*mobility((PieceSlotType)(r + base));
+				EvalTemp[c] += .125*mobility((PieceSlotType)(r + base));
 		}
 		//outposts
 #define OUTPOST
@@ -3280,6 +3504,7 @@ void calc_pawns()
 	}
 	///*
 	//mop up should handle knights differently
+	/*
 	if (MaterialSums[LIGHT][PAWN_COUNT] == 0 && MaterialSums[DARK][PAWN_COUNT] == 0 &&
 		Players.pieces[DARK_KNIGHT1] == EMPTY && Players.pieces[DARK_KNIGHT2] == EMPTY &&
 		Players.pieces[LIGHT_KNIGHT1] == EMPTY && Players.pieces[LIGHT_KNIGHT2] == EMPTY) {
@@ -3295,7 +3520,7 @@ void calc_pawns()
 				}
 		}
 	}
-
+*/
 	for (int kc = LIGHT;kc < NUM_COLORS;++kc) {
 		if (MaterialSums[kc][MAJOR_MINOR_COUNT] <= BISHOP_VALUE + KNIGHT_VALUE && MaterialSums[other_color((Colors)kc)][MAJOR_MINOR_COUNT] <= BISHOP_VALUE) {
 			int king_base = base_by_color((Colors)kc);
@@ -3355,7 +3580,7 @@ void calc_pawns()
 //#define IID_CHOICE CurrentPly < 4|| all_node || !zero || val + PAWN_VALUE >= beta || n==nullptr || n->move.empty()
 //#define IID_CHOICE  CurrentPly < 3 || (all_node) ||n==nullptr || n->move.empty()
 //#define IID_CHOICE n==nullptr || n->move.empty() || !zero  || val+PAWN_VALUE >= beta
-#define IID_CHOICE ((n==nullptr || n->move.empty()) && (!zero  || val+PAWN_VALUE >= beta) && CurrentPly < 4)
+#define IID_CHOICE n==nullptr || n->move.empty()
 //#define SHORT_CIRCUIT_IID
 //#define IGNORE_TT
 //#define PV_ARRAY
@@ -3635,8 +3860,20 @@ inline int eval()
 		PersistantValue + EphemeralValue +PawnsValue;
 }
 
+inline int qeval()
+{
+	if (EvalDirty()) //|| PawnsDirty()) //simple_calc();
+		calc_pawns(true);
+	const Colors o = other_color(_PlySide);
+	const int material_count = //pawn_balance(_PlySide)+
+		MaterialSums[_PlySide][PAWN_COUNT] - MaterialSums[o][PAWN_COUNT] +
+		MaterialSums[_PlySide][DONT_COUNT] + MaterialSums[_PlySide][MAJOR_MINOR_COUNT] - MaterialSums[o][MAJOR_MINOR_COUNT] - MaterialSums[o][DONT_COUNT];
+	return  material_count +
+		PersistantValue + EphemeralValue +PawnsValue;
+}
 inline int simple_eval()
 {
+    return eval();
 	//if (!PawnsDirty) return eval();
 	//	if (EvalDirty) simple_calc();
 	const Colors o = other_color(_PlySide);
@@ -3699,11 +3936,12 @@ inline void add_value(Colors side, PieceSlotType s)
 
 	SufficientPieces += IsSufficient[t] ? 1 : 0;
 	MinorPieces[slot_side] += IsMinor[t];
-	//	if (PieceCountIndex[t] == PAWN_COUNT) ++MaterialSums[slot_side][PAWN_COUNT];
+	//	if (PieceValueIndex[t] == PAWN_COUNT) ++MaterialSums[slot_side][PAWN_COUNT];
 	//	else
-	MaterialSums[slot_side][PieceCountIndex[t]] += CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t];
-
-	PersistantValue += square_value_of_piece(side, slot_side, t, p);
+	MaterialSums[slot_side][PieceValueIndex[t]] += CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t];
+     ++PieceCounts[slot_side][PieceCountIndex[t]];
+	ChangeThreats(slot_side,t,p,1);
+    PersistantValue += square_value_of_piece(side, slot_side, t, p);
 	update_hash(s);
 }
 inline void sub_value(Colors side, PieceSlotType s)
@@ -3714,9 +3952,11 @@ inline void sub_value(Colors side, PieceSlotType s)
 
 	SufficientPieces -= IsSufficient[t] ? 1 : 0;
 	MinorPieces[slot_side] -= IsMinor[t];
-	//	if (PieceCountIndex[t] == PAWN_COUNT) --MaterialSums[slot_side][PAWN_COUNT];
+	//	if (PieceValueIndex[t] == PAWN_COUNT) --MaterialSums[slot_side][PAWN_COUNT];
 	//	else	
-	MaterialSums[slot_side][PieceCountIndex[t]] -= CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t];
+	MaterialSums[slot_side][PieceValueIndex[t]] -= CheckForEndgame ? ValuePerPiece[t] : EValuePerPiece[t];
+    --PieceCounts[slot_side][PieceCountIndex[t]];
+	ChangeThreats(slot_side,t,p,-1);
 
 	PersistantValue -= square_value_of_piece(side, slot_side, t, p);
 	update_hash(s);
@@ -3897,7 +4137,7 @@ void Move::make()
 
 	const PieceSlotType slot_moving = Board[from];
 	movement_bonuses();
-	add_bonus(color(slot_moving), bonus*.25);
+	add_bonus(color(slot_moving), bonus*.3);
 	Colors side = PlySide();//color(slot_moving);
 							//	if (not_move()) {
 							//		sub_value(side,slot_moving);
@@ -3976,7 +4216,7 @@ void Move::unmake()
 
 	const PieceSlotType slot_moving = Board[to];
 	Colors side = PlySide();//color(slot_moving);
-	add_bonus(color(slot_moving), -.25*bonus);
+	add_bonus(color(slot_moving), -.3*bonus);
 
 	//	if (not_move()) {
 	//		sub_value(side,slot_moving);
@@ -4141,7 +4381,15 @@ void init_board()
 	}
 	MinorPieces[LIGHT] = MinorPieces[DARK] = 2;
 	SufficientPieces = 8 * 2 + 2 + 4;
-	for (int c = 0;c<NUM_COLORS;++c) for (int i = 0;i<NUM_MATERIAL_INDEXES;++i) MaterialSums[c][i] = 0;
+	for (int c = 0;c<NUM_COLORS;++c) {
+        for (int i = 0;i<NUM_MATERIAL_INDEXES;++i) MaterialSums[c][i] = 0;
+        for (int i = 0;i<NUM_PIECE_TYPES;++i) PieceCounts[c][i]=0;
+        for (int i = 0;i<NumRowThreats;++i) RowThreats[c][i]=0;
+        for (int i = 0;i<NumColThreats;++i) ColThreats[c][i]=0;
+        for (int i = 0;i<NumDiagLeftThreats;++i) DiagLeftThreats[c][i]=0;
+        for (int i = 0;i<NumDiagRightThreats;++i) DiagRightThreats[c][i]=0;
+
+    }
 	PawnsValue = 0;
 	resetPawnsDirty();
 	resetEvalDirty();
@@ -4456,16 +4704,34 @@ void print_board()
 //add c as color of sliding piece
 //add value as value of sliding piece
 
+/*
+#define CPOINT(direction,inc) \
+	if (Board[root_pos+direction] != NO_SLOT && \
+		color(Board[root_pos+direction]) == c && !is_pawn(Players.pieces[Board[root_pos+direction]])) count+=inc; \
+	else if (!is_other_color_pawn_at(root_pos+direction+FORWARD_RIGHT_DIRECTION[c],c) && !is_other_color_pawn_at(root_pos+direction+FORWARD_LEFT_DIRECTION[c],c)) count+=inc;\
+*/
 
 #define CPOINT(direction,inc) \
-	if (Board[root_pos+direction] != NO_SLOT) count+=inc;
+		if (!is_other_color_pawn_at(root_pos+direction+FORWARD_RIGHT_DIRECTION[c],c) && !is_other_color_pawn_at(root_pos+direction+FORWARD_LEFT_DIRECTION[c],c)) {\
+			if (Board[root_pos+direction] == NO_SLOT || \
+			(color(Board[root_pos+direction]) == c && !is_pawn(Players.pieces[Board[root_pos+direction]]))) count+=inc;\
+		}
 
+/*
+	PieceSlotType s = Board[p];
+	return is_piece(s) && color(s) == c && is_pawn(Players.pieces[s]);
+*/
+//{}{}{} NEW
 #define CSLIDE(direction,inc) \
 expanding = root_pos ;\
 do { \
 	expanding+=direction;\
-	if (Board[expanding] != NO_SLOT) break; \
-	count+=inc;\
+	if (Board[expanding] != NO_SLOT) {\
+		if (is_piece(Board[expanding]) && color(Board[expanding]) == c && !is_pawn(Players.pieces[Board[expanding]]) && \
+		!is_other_color_pawn_at(expanding+FORWARD_RIGHT_DIRECTION[c],c) && !is_other_color_pawn_at(expanding+FORWARD_LEFT_DIRECTION[c],c)) count+=inc; \
+		break; \
+	}\
+	if (!is_other_color_pawn_at(expanding+FORWARD_RIGHT_DIRECTION[c],c) && !is_other_color_pawn_at(expanding+FORWARD_LEFT_DIRECTION[c],c)) count+=inc;\
 	continue; \
 } while (true)
 
@@ -4506,122 +4772,182 @@ do { \
 #ifdef FAIRY
 #define HASH_LEN_LN2 21
 #else
-#define HASH_LEN_LN2 23
+#define HASH_LEN_LN2 22
 #endif
 
 const int HASH_LEN = 1 << HASH_LEN_LN2;
 const int HASH_MASK = HASH_LEN - 1;
+class HashTableInternalType
+{
+public:
+	int upper_bound;
+	int lower_bound;
+	int eval_copy;
+	char upper_bound_depth;
+	char lower_bound_depth;
+	HashMove move;
+	HashMove second_move;
+};
 
-
+HashTableInternalType *HashTableInternal;
+class HashTableEntry;
+HashTableEntry *HashTable;
 class HashTableEntry
 {
 
 
 public:
-	bool all_node()
+	int get_index() const
 	{
-		return upper_bound != INF && upper_bound_depth >= lower_bound_depth;
+		return this - &HashTable[0];
 	}
-	int get_lower(int depth)
+	HashTableInternalType *get_internal() const
 	{
-		if (lower_bound_depth >= depth)
-			return lower_bound;
+		return HashTableInternal + get_index();
+	}
+	static bool all_node(HashTableInternalType *it)
+	{
+		return it->upper_bound != INF && it->upper_bound_depth >= it->lower_bound_depth;
+	}
+//	bool all_node() { return all_node(get_internal());  }
+	inline int get_lower(int depth, HashTableInternalType *it)
+	{
+		if (it->lower_bound_depth >= depth)
+			return it->lower_bound;
 		return -INF;
 	}
-	int get_upper(int depth)
+//	int get_lower(int depth) { return get_lower(depth, get_internal());  }
+
+	inline static int get_upper(int depth, HashTableInternalType *it)
 	{
-		if (upper_bound_depth >= depth)
-			return upper_bound;
+		if (it->upper_bound_depth >= depth)
+			return it->upper_bound;
 		return INF;
 	}
-	void set_lower(int depth, int lower)
+//	int get_upper(int depth) { return get_upper(depth, get_internal()); }
+
+	inline static void set_lower(int depth, int lower, HashTableInternalType *it)
 	{
-		if (lower_bound_depth <= depth) {
-			lower_bound = lower;
-			lower_bound_depth = depth;
+		if (it->lower_bound_depth <= depth) {
+			it->lower_bound = lower;
+			it->lower_bound_depth = depth;
 		}
-	}
-	void set_upper(int depth, int upper)
-	{
-		if (upper_bound_depth <= depth) {
-			upper_bound = upper;
-			upper_bound_depth = depth;
-		}
-	}
-	void set_move(Move &m, int d)
-	{
-		move_depth = d;
-		move = m;
 	}
 
-	void set_move(RelativeMove &m, int d)
+	//void set_lower(int depth, int lower) { set_lower(depth, lower, get_internal()); }
+
+	inline static void set_upper(int depth, int upper, HashTableInternalType *it)
+	{
+		if (it->upper_bound_depth <= depth) {
+			it->upper_bound = upper;
+			it->upper_bound_depth = depth;
+		}
+	}
+	//void set_upper(int depth, int upper) { set_lower(depth, upper, get_internal()); }
+
+	inline void set_move(Move &m, int d, HashTableInternalType *it)
 	{
 		move_depth = d;
-		move = m;
+		it->move = m;
 	}
-	HashMove & get_move()
+	//void set_move(Move &m, int d) { set_move(m, d, get_internal()); }
+
+	inline void set_move(RelativeMove &m, int d, HashTableInternalType *it)
 	{
-		return move;
+		move_depth = d;
+		it->move = m;
 	}
+	//void set_move(RelativeMove &m, int d) { set_move(m, d, get_internal()); }
+
+	//HashMove & get_move()
+	//{
+	//	return get_internal()->move;
+	//}
+
+	inline static HashMove & get_move(HashTableInternalType *it)
+	{
+		return it->move;
+	}
+
 	int get_move_depth()
 	{
 		return move_depth;
 	}
-	void clear()
+	void clear(HashTableInternalType *it)
 	{
-		upper_bound_depth = lower_bound_depth = -127;
-		move.clear();
-		second_move.clear();
-		eval_copy = INF;
+		//HashTableInternalType *it = get_internal();
+		it->upper_bound_depth = it->lower_bound_depth = -127;
+		it->move.clear();
+		it->second_move.clear();
+		it->eval_copy = INF;
 		upper_exact = lower_exact = false;
 	}
 	bool is_exact() { return upper_exact || lower_exact; }
 
-	int get_eval(bool simple)
+	int get_eval(bool simple, HashTableInternalType *it, bool q=false)
 	{
+		//HashTableInternalType *it = get_internal();
 		if (upper_exact) {
 			if (lower_exact) {
-				if (upper_bound_depth > lower_bound_depth) return upper_bound;
-				return lower_bound;
+				if (it->upper_bound_depth > it->lower_bound_depth) return it->upper_bound;
+				return it->lower_bound;
 			}
 		}
-		if (lower_exact) return lower_bound;
-		if (simple && upper_bound_depth != -127 && abs(upper_bound - lower_bound) < PAWN_VALUE >> 1) return  lower_bound;
-		if (eval_copy != INF) return eval_copy;
+		if (lower_exact) return it->lower_bound;
+		if (simple && it->upper_bound_depth != -127 && abs(it->upper_bound - it->lower_bound) < PAWN_VALUE >> 1) return  it->lower_bound;
+		if (it->eval_copy != INF) return it->eval_copy;
 		if (simple) return -simple_eval();
 		//		if (lower_bound_depth != -127) return lower_bound;
 		//		if (upper_bound_depth == lower_bound_depth) return upper_bound;
 		//		if (lower_bound_depth != -127) return lower_bound;//(upper_bound + lower_bound) >> 1;
 
 		//		if (eval_copy == INF) 
-		eval_copy = -eval();
-		return eval_copy;
+		it->eval_copy = q?-qeval():-eval();
+		return it->eval_copy;
 	}
 	HashTableEntry() : move_created(0) { }
-	HashType key;
+	HashType key; //+
+	int move_created; //+
 
-	bool upper_exact;
-	bool lower_exact;
-	int upper_bound;
-	int lower_bound;
-	int eval_copy;
-	char upper_bound_depth;
-	char lower_bound_depth;
-	char move_depth;
-	int move_created;
-	HashMove move;
-	HashMove second_move;
+	unsigned char upper_exact : 1;
+	unsigned char lower_exact : 1;
+//	bool upper_exact;//+-
+//	bool lower_exact;//+-
+	char move_depth; //+-
 };
 
-
-HashTableEntry *HashTable;//[HASH_LEN];
 void init_hash()
 {
 	HashTable = new HashTableEntry[HASH_LEN];
-	if (HashTable == nullptr) cout << "\nAllocation failed\n";
+	HashTableInternal = new HashTableInternalType[HASH_LEN];
+	if (HashTable == nullptr || HashTableInternal == nullptr) cout << "\nAllocation failed\n";
 }
 
-HashTableEntry * GetHash(bool q, Colors c)
+#define PREFETCH(n){ \
+	_mm_prefetch((char *)n, _MM_HINT_T0); \
+	if (sizeof(*n)>64) { _mm_prefetch((char *)n+64, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*2) { _mm_prefetch((char *)n+64*2, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*3) { _mm_prefetch((char *)n+64*3, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*4) { _mm_prefetch((char *)n+64*4, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*5) { _mm_prefetch((char *)n+64*5, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*6) { _mm_prefetch((char *)n+64*6, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*7) { _mm_prefetch((char *)n+64*7, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*8) { _mm_prefetch((char *)n+64*8, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*9) { _mm_prefetch((char *)n+64*9, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*10) { _mm_prefetch((char *)n+64*10, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*11) { _mm_prefetch((char *)n+64*11, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*12) { _mm_prefetch((char *)n+64*12, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*13) { _mm_prefetch((char *)n+64*13, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*14) { _mm_prefetch((char *)n+64*14, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*15) { _mm_prefetch((char *)n+64*15, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*16) { _mm_prefetch((char *)n+64*16, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*17) { _mm_prefetch((char *)n+64*17, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*18) { _mm_prefetch((char *)n+64*18, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*19) { _mm_prefetch((char *)n+64*19, _MM_HINT_T0);}\
+	if (sizeof(*n)>64*20) { _mm_prefetch((char *)n+64*20, _MM_HINT_T0);}\
+	}
+
+HashTableEntry * GetHash(bool q, Colors c, HashTableInternalType* &e)
 {
 	HashType h;
 	if (PlySide() != c) h = Hash ^ LightHash;
@@ -4629,38 +4955,45 @@ HashTableEntry * GetHash(bool q, Colors c)
 	//	const int hoff = q ? HASH_LEN : 0;
 	HashTableEntry * entry = &HashTable[((int)(h.low) & HASH_MASK)], *entry2;
 	if ((history_len + ClearHash) - entry->move_created < MAX_MOVES  &&
-		entry->key == h) return entry;
-
+		entry->key == h) {
+		e = entry->get_internal();
+		PREFETCH(e);
+		return entry;
+	}
 	entry2 = &HashTable[((int)h.high_mask() & HASH_MASK)];
 	if ((history_len + ClearHash) - entry2->move_created < MAX_MOVES &&
-		entry2->key == h) return entry2;
-
+		entry2->key == h) {
+		e = entry2->get_internal();
+		PREFETCH(e);
+		return entry2;
+	}
 	return nullptr;
 }
 
 int get_order_eval(bool &is_score, Colors c, int depth)
 {
 	HashTableEntry *e = nullptr;
-	if (depth >= 0) e = GetHash(false,c);
+	HashTableInternalType *ei;
+	if (depth >= 0) e = GetHash(false,c,ei);
 	if (e != nullptr) {
-		if (e->lower_bound_depth != -127 && e->upper_bound_depth != -127) {
+		if (ei->lower_bound_depth != -127 && ei->upper_bound_depth != -127) {
 			is_score = true;
-			return -(e->lower_bound + e->upper_bound) >> 1;
+			return -(ei->lower_bound + ei->upper_bound) >> 1;
 		}
 	}
 	HashTableEntry *eq = nullptr;
-	if (depth <= 1) eq = GetHash(true,c);
+	if (depth <= 1) eq = GetHash(true,c,ei);
 	if (eq != nullptr) {
-		if (eq->lower_bound_depth != -127 && eq->upper_bound_depth != -127) {
+		if (ei->lower_bound_depth != -127 && ei->upper_bound_depth != -127) {
 			is_score = true;
-			return -(eq->lower_bound + eq->upper_bound) >> 1;
+			return -(ei->lower_bound + ei->upper_bound) >> 1;
 		}
 	}
 	is_score = false;
 	return 0;
 }
 
-HashTableEntry * GetOrMakeHash(bool q,Colors c)
+HashTableEntry * GetOrMakeHash(bool q,Colors c, HashTableInternalType* &e)
 {
 	HashType h;
 	if (PlySide() != c) h = Hash ^ LightHash;
@@ -4669,12 +5002,16 @@ HashTableEntry * GetOrMakeHash(bool q,Colors c)
 	HashTableEntry * entry = &HashTable[((int)(h.low) & HASH_MASK)], *entry2;
 	if ((history_len + ClearHash) - entry->move_created < MAX_MOVES &&
 		entry->key == h) {
+		e = entry->get_internal();
+		PREFETCH(e);
 		entry->move_created = history_len + ClearHash;
 		return entry;
 	}
 	entry2 = &HashTable[((int)h.high_mask() & HASH_MASK)];
 	if ((history_len + ClearHash) - entry2->move_created < MAX_MOVES &&
 		entry2->key == h) {
+		e = entry2->get_internal();
+		PREFETCH(e);
 		entry2->move_created = history_len + ClearHash;
 		return entry2;
 	}
@@ -4684,9 +5021,11 @@ HashTableEntry * GetOrMakeHash(bool q,Colors c)
 		else if (!entry2->is_exact() && entry->is_exact()) entry = entry2;
 		else if (entry2->is_exact() == entry->is_exact() && entry2->get_move_depth() < entry->get_move_depth()) entry = entry2;
 	}
+	e= entry->get_internal();
+	//PREFETCH(e);
 	entry->key = h;
-	entry->clear();
 	entry->move_created = history_len + ClearHash;
+	entry->clear(e);
 
 	return entry;
 }
@@ -5162,24 +5501,36 @@ int count_null_moves(const Colors c, const Pos root_pos)
 	return 0;
 }
 
+/*
 #define QUEEN_COUNT 1
 #define KNIGHT_COUNT 15
 #define ROOK_HOR_COUNT 2
 #define ROOK_VIR_COUNT 7
 #define BISHOP_COUNT 3
+*/
+#define KNIGHT_COUNT 7
+
+#define QUEEN_COUNT_F 4
+#define ROOK_HOR_COUNT 2
+#define ROOK_VIR_COUNT_F 6
+#define BISHOP_COUNT_F 2
+#define QUEEN_COUNT_B 2
+#define QUEEN_COUNT_H 3
+#define ROOK_VIR_COUNT_B 2
+#define BISHOP_COUNT_B 2
 int count_queen_moves(const Colors c, const Pos root_pos)
 {
 	Pos expanding;
 	int count = 0;
-	CSLIDE(-11, QUEEN_COUNT);
-	CSLIDE(-10, QUEEN_COUNT);
-	CSLIDE(-9, QUEEN_COUNT);
-	CSLIDE(-1, QUEEN_COUNT);
-	CSLIDE(1, QUEEN_COUNT);
-	CSLIDE(9, QUEEN_COUNT);
-	CSLIDE(10, QUEEN_COUNT);
-	CSLIDE(11, QUEEN_COUNT);
-	return count>>1;
+	CSLIDE(FORWARD_RIGHT_DIRECTION[c], QUEEN_COUNT_F);
+	CSLIDE(FORWARD_DIRECTION[c], QUEEN_COUNT_F);
+	CSLIDE(FORWARD_LEFT_DIRECTION[c], QUEEN_COUNT_F);
+	CSLIDE(-1, QUEEN_COUNT_H);
+	CSLIDE(1, QUEEN_COUNT_H);
+	CSLIDE(BACKWARD_LEFT_DIRECTION[c], QUEEN_COUNT_B);
+	CSLIDE(BACKWARD_DIRECTION[c], QUEEN_COUNT_B);
+	CSLIDE(BACKWARD_RIGHT_DIRECTION[c], QUEEN_COUNT_B);
+	return int_sqrt_table[count>>1]*4;
 }
 int count_knight_moves(const Colors c, const Pos root_pos)
 {
@@ -5192,29 +5543,29 @@ int count_knight_moves(const Colors c, const Pos root_pos)
 	CPOINT(12, KNIGHT_COUNT);
 	CPOINT(19, KNIGHT_COUNT);
 	CPOINT(21, KNIGHT_COUNT);
-	return count;
+	return int_sqrt_table[count]*2;
 }
 
 int count_bishop_moves(const Colors c, const Pos root_pos)
 {
 	Pos expanding;
 	int count = 0;
-	CSLIDE(-11, BISHOP_COUNT);
-	CSLIDE(-9, BISHOP_COUNT);
-	CSLIDE(9, BISHOP_COUNT);
-	CSLIDE(11, BISHOP_COUNT);
-	return count;
+	CSLIDE(FORWARD_RIGHT_DIRECTION[c], BISHOP_COUNT_F);
+	CSLIDE(FORWARD_LEFT_DIRECTION[c], BISHOP_COUNT_F);
+	CSLIDE(BACKWARD_LEFT_DIRECTION[c], BISHOP_COUNT_B);
+	CSLIDE(BACKWARD_RIGHT_DIRECTION[c], BISHOP_COUNT_B);
+	return int_sqrt_table[count]*3;
 }
 
 int count_rook_moves(const Colors c, const Pos root_pos)
 {
 	Pos expanding;
 	int count = 0;
-	CSLIDE(-10, ROOK_VIR_COUNT);
+	CSLIDE(FORWARD_DIRECTION[c], ROOK_VIR_COUNT_F);
 	CSLIDE(-1, ROOK_HOR_COUNT);
 	CSLIDE(1, ROOK_HOR_COUNT);
-	CSLIDE(10, ROOK_VIR_COUNT);
-	return count;
+	CSLIDE(BACKWARD_DIRECTION[c], ROOK_VIR_COUNT_B);
+	return int_sqrt_table[count]*4;
 }
 
 typedef int CountMoveFn(const Colors c, const Pos root_pos);
@@ -6050,23 +6401,39 @@ PieceSlotType LeastAttacker(Colors c, Pos root_pos)
 PieceSlotType found_queen = NO_SLOT;
 int expanding;
 FIND_ATTACKER_PAWN;
-FIND_ATTACKER_POS(-21, KNIGHT);
-FIND_ATTACKER_POS(-19, KNIGHT);
-FIND_ATTACKER_POS(-12, KNIGHT);
-FIND_ATTACKER_POS(-8, KNIGHT);
-FIND_ATTACKER_POS(8, KNIGHT);
-FIND_ATTACKER_POS(12, KNIGHT);
-FIND_ATTACKER_POS(19, KNIGHT);
-FIND_ATTACKER_POS(21, KNIGHT);
+const Colors oc = other_color(c);
+const int base = base_by_color(oc);
 
-FIND_ATTACKER_DSLIDE(-11);
-FIND_ATTACKER_DSLIDE(-9);
-FIND_ATTACKER_DSLIDE(9);
-FIND_ATTACKER_DSLIDE(11);
-FIND_ATTACKER_HVSLIDE(-10);
-FIND_ATTACKER_HVSLIDE(-1);
-FIND_ATTACKER_HVSLIDE(1);
-FIND_ATTACKER_HVSLIDE(10);
+if (PieceCounts[oc][PieceCountIndex[KNIGHT]] !=0){
+    FIND_ATTACKER_POS(-21, KNIGHT);
+    FIND_ATTACKER_POS(-19, KNIGHT);
+    FIND_ATTACKER_POS(-12, KNIGHT);
+    FIND_ATTACKER_POS(-8, KNIGHT);
+    FIND_ATTACKER_POS(8, KNIGHT);
+    FIND_ATTACKER_POS(12, KNIGHT);
+    FIND_ATTACKER_POS(19, KNIGHT);
+    FIND_ATTACKER_POS(21, KNIGHT);
+}
+
+//bool has_queen = PieceCounts[oc][PieceCountIndex[QUEEN]] !=0;
+
+    if (DiagLeftThreats[oc][SquareToDiagLeftIndex[root_pos]]!=0){
+        FIND_ATTACKER_DSLIDE(-11);
+        FIND_ATTACKER_DSLIDE(11);    
+    }
+    if (DiagRightThreats[oc][SquareToDiagRightIndex[root_pos]]!=0){
+        FIND_ATTACKER_DSLIDE(-9);
+        FIND_ATTACKER_DSLIDE(9);
+    }
+
+    if (ColThreats[oc][SquareToColIndex[root_pos]]!=0){
+        FIND_ATTACKER_HVSLIDE(-10);
+        FIND_ATTACKER_HVSLIDE(10);
+    }
+    if (RowThreats[oc][SquareToRowIndex[root_pos]]!=0){
+        FIND_ATTACKER_HVSLIDE(-1);
+        FIND_ATTACKER_HVSLIDE(1);
+    }
 
 if (found_queen != NO_SLOT) return found_queen;
 
@@ -6131,14 +6498,14 @@ int see_u(Colors side, Pos root_pos, int just_captured, int depth)
 		if (cant_take_with_king) return 0;
 		return just_captured;
 	}
-//	const int at_value = positive_square_value_of_piece(other_color(side), Players.pieces[least], root_pos);
-//	const int from_value = positive_square_value_of_piece(other_color(side), Players.pieces[least], Players.positions[least]);
+	const int at_value = positive_square_value_of_piece(other_color(side), Players.pieces[least], root_pos);
+	const int from_value = positive_square_value_of_piece(other_color(side), Players.pieces[least], Players.positions[least]);
 	Board[Players.positions[least]] = NO_SLOT;
 	int v = just_captured 
-		//+ from_value 
-		//- at_value 
+        - from_value 
+		+ at_value 
 		- see_u(other_color(side), root_pos, ValuePerPiece[Players.pieces[least]]
-			//+ at_value
+			+ at_value
 			, depth - 1);
 	Board[Players.positions[least]] = least;
 	if (v < 0) return 0;
@@ -6149,9 +6516,9 @@ int SEE(Colors c, Pos root_pos, PieceSlotType exclude, int depth)
 {
 	if (depth == 0) return 0;
 	Board[Players.positions[exclude]] = NO_SLOT;
-	//int at_value = positive_square_value_of_piece(c, Players.pieces[exclude], root_pos);
-	int v =//at_value 
-		-see_u(c, root_pos, ValuePerPiece[Players.pieces[exclude]]//+ at_value
+	int at_value = positive_square_value_of_piece(c, Players.pieces[exclude], root_pos);
+	int v =at_value 
+		-see_u(c, root_pos, ValuePerPiece[Players.pieces[exclude]]+ at_value
 			, depth);
 	Board[Players.positions[exclude]] = exclude;
 	return v;
@@ -6199,30 +6566,43 @@ int Safety(Colors c, Pos root_pos)
 {
 	int units=0;
 	int expanding;
-	REV_DSLIDE_KN(-11);
-	REV_HVSLIDE_KN(-10);
-	REV_DSLIDE_KN(-9);
-	REV_HVSLIDE_KN(-1);
-	REV_HVSLIDE_KN(1);
-	REV_DSLIDE_KN(9);
-	REV_HVSLIDE_KN(10);
-	REV_DSLIDE_KN(11);
-	REV_POS_KN(-21, KNIGHT,2);
-	REV_POS_KN(-19, KNIGHT, 2);
-	REV_POS_KN(-12, KNIGHT, 2);
-	REV_POS_KN(-11, KING,1);
-	REV_POS_KN(-10, KING,1);
-	REV_POS_KN(-9, KING,1);
-	REV_POS_KN(-8, KNIGHT, 2);
-	REV_POS_KN(-1, KING,1);
-	REV_POS_KN(1, KING,1);
-	REV_POS_KN(8, KNIGHT, 2);
-	REV_POS_KN(9, KING,1);
-	REV_POS_KN(10, KING,1);
-	REV_POS_KN(11, KING,1);
-	REV_POS_KN(12, KNIGHT, 2);
-	REV_POS_KN(19, KNIGHT, 2);
-	REV_POS_KN(21, KNIGHT, 2);
+    const Colors oc = other_color(c);
+
+    if (DiagLeftThreats[oc][SquareToDiagLeftIndex[root_pos]]!=0){
+        REV_DSLIDE_KN(-11);
+        REV_DSLIDE_KN(11);
+    }
+    if (DiagRightThreats[oc][SquareToDiagRightIndex[root_pos]]!=0){
+        REV_DSLIDE_KN(-9);
+        REV_DSLIDE_KN(9);
+    }
+    if (ColThreats[oc][SquareToColIndex[root_pos]]!=0){
+        REV_HVSLIDE_KN(-10);
+        REV_HVSLIDE_KN(10);
+    }
+    if (RowThreats[oc][SquareToRowIndex[root_pos]]!=0){
+        REV_HVSLIDE_KN(-1);
+        REV_HVSLIDE_KN(1);
+    }
+    if (PieceCounts[oc][PieceCountIndex[KNIGHT]] !=0){
+        REV_POS_KN(-21, KNIGHT,2);
+        REV_POS_KN(-19, KNIGHT, 2);
+        REV_POS_KN(-12, KNIGHT, 2);
+        REV_POS_KN(12, KNIGHT, 2);
+        REV_POS_KN(19, KNIGHT, 2);
+        REV_POS_KN(21, KNIGHT, 2);
+        REV_POS_KN(-8, KNIGHT, 2);
+        REV_POS_KN(8, KNIGHT, 2);
+    }
+    const int base = base_by_color(oc);
+
+	const PieceSlotType KingS = (PieceSlotType)(KINGP + base);
+	const Pos KingPos = Players.positions[KingS];
+	switch (KingPos - root_pos)
+	{
+	case -11:case -10:case -9:case-1:case 1:case 9:case 10:case 11: ++units;
+	}
+   
 	REV_PAWN_KN;
 	return units;
 }
@@ -6232,30 +6612,45 @@ bool Threatened(Colors c, Pos root_pos)
 {
 	int expanding;
 	REV_PAWN;
-	const PieceSlotType KingS = (PieceSlotType)(KINGP + base_by_color(other_color(c)));
+    
+    const Colors oc = other_color(c);
+    const int base = base_by_color(oc);
+
+	const PieceSlotType KingS = (PieceSlotType)(KINGP + base);
 	const Pos KingPos = Players.positions[KingS];
 	switch (KingPos - root_pos)
 	{
 	case -11:case -10:case -9:case-1:case 1:case 9:case 10:case 11: return true;
 	}
 
-	REV_POS(-21, KNIGHT);
-	REV_POS(-19, KNIGHT);
-	REV_POS(-12, KNIGHT);
-	REV_POS(-8, KNIGHT);
-	REV_POS(8, KNIGHT);
-	REV_POS(12, KNIGHT);
-	REV_POS(19, KNIGHT);
-	REV_POS(21, KNIGHT);
+    if (PieceCounts[oc][PieceCountIndex[KNIGHT]] !=0){
+        REV_POS(-21, KNIGHT);
+        REV_POS(-19, KNIGHT);
+        REV_POS(-12, KNIGHT);
+        REV_POS(-8, KNIGHT);
+        REV_POS(8, KNIGHT);
+        REV_POS(12, KNIGHT);
+        REV_POS(19, KNIGHT);
+        REV_POS(21, KNIGHT);
+    }
+    
+    if (DiagLeftThreats[oc][SquareToDiagLeftIndex[root_pos]]!=0){
+        REV_DSLIDE(-11);
+        REV_DSLIDE(11);
+    }
+    if (DiagRightThreats[oc][SquareToDiagRightIndex[root_pos]]!=0){
+        REV_DSLIDE(-9);
+        REV_DSLIDE(9);
+    }
 
-	REV_DSLIDE(-11);
-	REV_HVSLIDE(-10);
-	REV_DSLIDE(-9);
-	REV_HVSLIDE(-1);
-	REV_HVSLIDE(1);
-	REV_DSLIDE(9);
-	REV_HVSLIDE(10);
-	REV_DSLIDE(11);
+    if (ColThreats[oc][SquareToColIndex[root_pos]]!=0){
+        REV_HVSLIDE(-10);
+        REV_HVSLIDE(10);
+    }
+    if (RowThreats[oc][SquareToRowIndex[root_pos]]!=0){
+        REV_HVSLIDE(-1);
+        REV_HVSLIDE(1);
+    }
 	return false;
 }
 /*
@@ -6843,7 +7238,7 @@ struct MoveGenerator
 			}
 */
 		case BEFORE_IID:
-			state = IID;
+			
 			if (kind) *kind = state;
 			if (MovesOrdered.empty()) {
 				if (quiescent //|| !try_iid
@@ -6866,34 +7261,18 @@ struct MoveGenerator
 			
 			if (num_killer>0) {
 				int mn = sort_pv(killer_moves[0]);
+				if (mn != -1) try_iid=false;
 				if (mn != -1 && hash_move_scores[0] != INF)MovesOrdered.value[mn] = hash_move_scores[0];
 				if (num_killer>1) {
 					mn = sort_pv(killer_moves[1]);
+					if (mn != -1) try_iid=false;
 					if (mn != -1 && hash_move_scores[1] != INF) MovesOrdered.value[mn] = hash_move_scores[1];
 				}
 			}
 			if (try_iid) {
+				state = IID;
 				return 0;
-			}
-		case IID:
-#ifdef SHORT_CIRCUIT_IID
-			if (try_iid && !EnableHistory) {
-				MovesOrdered.reveal_after_iid();
-				if (num_killer>0) {
-					int mn = sort_pv(killer_moves[0]);
-					if (mn != -1 && hash_move_scores[0] != INF)MovesOrdered.value[mn] = hash_move_scores[0];
-					if (num_killer>1) {
-						mn = sort_pv(killer_moves[1]);
-						if (mn != -1 && hash_move_scores[1] != INF) MovesOrdered.value[mn] = hash_move_scores[1];
-					}
-				}
-			}
-#endif
-//#ifdef HISTORY_HEURISTIC
-//			//if (//initial_ok 
-//			if (EnableHistory) 
-//;			MovesOrdered.add_history(quiescent);
-//#endif
+			} 
 
 			state = PositiveCaptures;
 		case PositiveCaptures:
@@ -7075,7 +7454,26 @@ struct MoveGenerator
 
 			//			*/
 			//bool LazyGenMove(int &i, bool quiescent, Colors c, Move *killer_moves, int num_killer)
+		case IID:
 			state = GeneratedMoves;
+#ifdef SHORT_CIRCUIT_IID
+			if (try_iid && !EnableHistory) {
+				MovesOrdered.reveal_after_iid();
+				//if (num_killer>0) {
+				//	int mn = sort_pv(killer_moves[0]);
+				//	if (mn != -1 && hash_move_scores[0] != INF)MovesOrdered.value[mn] = hash_move_scores[0];
+				//	if (num_killer>1) {
+				//		mn = sort_pv(killer_moves[1]);
+				//		if (mn != -1 && hash_move_scores[1] != INF) MovesOrdered.value[mn] = hash_move_scores[1];
+				//	}
+				}
+			}
+#endif
+//#ifdef HISTORY_HEURISTIC
+//			//if (//initial_ok 
+//			if (EnableHistory) 
+//;			MovesOrdered.add_history(quiescent);
+//#endif
 
 		case GeneratedMoves:
 			if (kind) *kind = state;
@@ -7329,6 +7727,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 	//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
 	Colors my_color = other_color(PlySide());
 	HashTableEntry *n = nullptr;
+	HashTableInternalType *ni;
 	Move m2;
 	HashMove m3;
 	int move_depth = -127;
@@ -7376,15 +7775,15 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 #ifndef IGNORE_TT
 	//if (d>0)
 	if (fake_value != -INF)
-		n = GetHash(d <= 0, my_color);
-	else n = GetOrMakeHash(d<=0, my_color);
+		n = GetHash(d <= 0, my_color,ni);
+	else n = GetOrMakeHash(d<=0, my_color,ni);
 	if (n!=nullptr){
 		if (upper != lower) {
-			lower = n->get_lower(d);
-			upper = n->get_upper(d);
+			lower = n->get_lower(d,ni);
+			upper = n->get_upper(d,ni);
 		}
 		if (!in_pv) {
-			HashMove *m = &n->get_move();
+			HashMove *m = &n->get_move(ni);
 			if (!m->empty()) {
 				if (!MovesOrdered.empty()) {
 					int mn = sort_pv(*m);
@@ -7481,7 +7880,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		}
 		else if (CurrentPly == 1) m2 = pv[0][0].move;
 
-		if (n!=nullptr) m3 = n->second_move;
+		if (n!=nullptr) m3 = ni->second_move;
 
 	}
 	//else if (CurrentPly == 0) m2 = Ply0Move;
@@ -7503,22 +7902,22 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		//ninpv ? QUIESCENT_DEPTH - 6 : 
 		QUIESCENT_DEPTH;
 	if (d <= -QD) {
-		g = (n == nullptr ? (ninpv ? -simple_eval() : -eval()) : n->get_eval(ninpv)); /* leaf node */
+		g = (n == nullptr ? (ninpv ? -simple_eval() : -qeval()) : n->get_eval(ninpv,ni,true)); /* leaf node */
 																					//if (ninpv && abs(beta - g) < PAWN_VALUE>>1) g = (n == nullptr ? eval(): n->get_eval(false));
 
 																					//if (MinDepth<6 && last_piece_moved != OFF_BOARD) g = g - SEE(Players.positions[last_piece_moved]);
 																					//if (ninpv&&last_piece_moved != OFF_BOARD) g+CALC_SEE(Players.positions[last_piece_moved]);
 	}
 	else {
-		int val = (n == nullptr ? (ninpv ? -simple_eval() : -eval()) : n->get_eval(ninpv));
+		int val = (n == nullptr ? (ninpv ? -simple_eval() : -eval()) : n->get_eval(ninpv,ni));
 
-		bool all_node = n != nullptr ? n->all_node() : false;
+		bool all_node = n != nullptr ? n->all_node(ni) : false;
 		if (!zero && !InIID && all_node && d< realdepth - 1) d += (realdepth - d) >> 1;
 
 
 
 		if (last_piece_moved != OFF_BOARD) val = val;// -SEE(Players.positions[last_piece_moved]);
-		int lower_val = (n == nullptr ? val : (n->get_lower(-QUIESCENT_DEPTH) == -INF ? val : n->get_lower(-QUIESCENT_DEPTH)));
+		int lower_val = (n == nullptr ? val : (n->get_lower(-QUIESCENT_DEPTH,ni) == -INF ? val : n->get_lower(-QUIESCENT_DEPTH, ni)));
 		lower_val = __max(lower_val, val);
 		//		const bool in_check = king_in_check(PlySide());
 
@@ -7531,10 +7930,10 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				InIID || zero) &&
 			!in_check //&& d <= 3 
 			&& !(close_to_mate(alpha) || close_to_mate(beta))) {
-			if (n != nullptr && n->get_upper(d - 1) + (other_in_end ? 2 * PAWN_VALUE : NORMAL_ROOK_VALUE) < alpha) {
+			if (n != nullptr && n->get_upper(d - 1, ni) + (other_in_end ? 2 * PAWN_VALUE : NORMAL_ROOK_VALUE) < alpha) {
 				if (d <= 0) --MidNodes; else --NCMidNodes;
 				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
-				return n->get_upper(d - 1);
+				return n->get_upper(d - 1, ni);
 			}
 			//			if (n != nullptr && n->get_upper(d - 2) + QUEEN_VALUE + PAWN_VALUE< alpha) {
 			//				if (d<=0) --MidNodes; else --NCMidNodes;
@@ -7548,6 +7947,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 			//			if (d == 2 && val + ROOK_VALUE < alpha) return val;
 		}
 #endif
+#ifdef STAND_PAT
 		if (d < 1 && !in_check)
 		{
 			if (lower_val >= beta) {
@@ -7557,6 +7957,16 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
 				return lower_val; //stand pat
 			}
+//			if (d <= 0){
+//				int BIG_DELTA = QUEEN_VALUE;
+//				int upper_val = (n == nullptr ? val : (n->get_upper(-QUIESCENT_DEPTH) == INF ? val : n->get_upper(-QUIESCENT_DEPTH)));
+//				upper_val = __min(upper_val, val);
+			//if ( isPromotingPawn() ) BIG_DELTA += (int)(QUEEN_VALUE*.8);
+//				if ( upper_val < alpha - BIG_DELTA ) {
+//					--MidNodes;
+//					return upper_val;
+//				}
+//			}
 			//			if (n != nullptr){
 			//				int l = n->get_lower(-QUIESCENT_DEPTH);
 			//				if (l >= beta) {
@@ -7565,7 +7975,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 			//				}
 			//			}
 		}
-
+#endif
 #ifdef REVERSE_FUTILITY
 		if (//CheckForEndgame && //d>0 &&
 			(late ||
@@ -7573,7 +7983,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 			!in_check //&& d <= 3 
 			&& !(close_to_mate(alpha) || close_to_mate(beta)))
 		{
-			if (n != nullptr && n->get_lower(d - 1) - (in_end ? PAWN_VALUE : BISHOP_VALUE) > beta) {
+			if (n != nullptr && n->get_lower(d - 1, ni) - (in_end ? PAWN_VALUE : BISHOP_VALUE) > beta) {
 				if (d <= 0) { --MidNodes; }
 				else {
 					--NCMidNodes;
@@ -7581,9 +7991,9 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 					//					++NumberOnFirstMove;
 				}
 				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
-				return n->get_lower(d - 1);
+				return n->get_lower(d - 1, ni);
 			}
-			if (n != nullptr && n->get_lower(d - 2) - (in_end ? 2 * PAWN_VALUE : NORMAL_ROOK_VALUE) > beta) {
+			if (n != nullptr && n->get_lower(d - 2, ni) - (in_end ? 2 * PAWN_VALUE : NORMAL_ROOK_VALUE) > beta) {
 				if (d <= 0) { --MidNodes; }
 				else {
 					//					++NumFailHighNodes;
@@ -7591,9 +8001,9 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 					--NCMidNodes;
 				}
 				//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 1;
-				return n->get_lower(d - 2);
+				return n->get_lower(d - 2, ni);
 			}
-			if (d > 0 && d <= 2 && (n == nullptr || n->get_lower(d - 2) == -INF) && val - (in_end ? PAWN_VALUE : (BISHOP_VALUE + NORMAL_ROOK_VALUE) / 3)*d > beta) return val - (in_end ? PAWN_VALUE : (BISHOP_VALUE + NORMAL_ROOK_VALUE) / 3) *d;
+			if (d > 0 && d <= 2 && (n == nullptr || n->get_lower(d - 2, ni) == -INF) && val - (in_end ? PAWN_VALUE : (BISHOP_VALUE + NORMAL_ROOK_VALUE) / 3)*d > beta) return val - (in_end ? PAWN_VALUE : (BISHOP_VALUE + NORMAL_ROOK_VALUE) / 3) *d;
 			/*
 			if (n != nullptr && n->get_lower(d - 3) - QUEEN_VALUE - PAWN_VALUE > beta) {
 			if (d <= 0) { --MidNodes; }
@@ -7706,7 +8116,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 			//CurrentPly <= (MinDepth+3)>>2 
 #		ifndef IGNORE_TT
 			//m2.empty() || (!zero || (all_node && val + PAWN_VALUE>beta)) && d>2//|| !zero//|| (CurrentPly&1)==1// && val<beta 
-			deeper //(!zero && m2.empty() && d>2)//|| !zero//|| (CurrentPly&1)==1// && val<beta 
+			deeper && (IID_CHOICE)//(!zero && m2.empty() && d>2)//|| !zero//|| (CurrentPly&1)==1// && val<beta 
 #		else
 			(!zero && m2.empty() && d>3)//|| !zero//|| (CurrentPly&1)==1// && val<beta 
 #		endif
@@ -7887,7 +8297,8 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 //								}
 #endif
 								dec_ply();
-								MovesOrdered.unmarked_value() = (val2 - val) << 10;
+//								MovesOrdered.unmarked_value() = (val2 - val) << 10;
+								MovesOrdered.unmarked_value() = val2  << 10;
 								c.unmake();
 							}
 						}
@@ -7927,7 +8338,8 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				//moves.next calls c.make()
 				int new_depth = d - 1;
 
-				int lmr_dec =(deeper && !moves.EnableHistory) ? 1 : 0;   //middle
+				int lmr_dec =//(deeper && !moves.EnableHistory) 
+				moves.try_iid ? 2 : 1;   //middle
 				int delay_inc = (!zero) ? 1 : 0; //
 
 				bool n_late = false;
@@ -8022,13 +8434,13 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 					&& !is_king(c.initial)
 					&& !(is_pawn(c.initial)))
 				{
-					if ((move_value <= (1 << 10) - 1 && move_count > 2) || move_count  > 3) n_late = true;
+					if ((move_value <= (1 << 10) - 1 && move_count > 2-lmr_dec) || move_count  > 3-lmr_dec) n_late = true;
 #ifdef LMR
 					if (zero //|| InIID
 						) {
 						if (c.slot_taken != NO_SLOT) {
 							//non pv, non capture
-							if (new_depth> 0&& move_value <= (1 << 10) || move_count > 3) // && CheckForEndgame 
+							if (new_depth> 0&& move_value <= (1 << 10) || move_count > 3-lmr_dec) // && CheckForEndgame 
 							{
 								++reduced;
 								--new_depth;
@@ -8051,7 +8463,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 						}
 						else {
 							//non pv, capture
-							if (new_depth>0 && (move_value <= (1 << 10) || move_count > 3)) // && CheckForEndgame 
+							if (new_depth>0 && (move_value <= (1 << 10) || move_count > 3-lmr_dec)) // && CheckForEndgame 
 							{
 								++reduced;
 								--new_depth;
@@ -8069,7 +8481,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 					{
 						if (c.slot_taken != NO_SLOT) {
 							//pv, non capture
-							if (new_depth>0 && (move_value <= (1 << 10) || move_count  > 3)) // && CheckForEndgame 
+							if (new_depth>0 && (move_value <= (1 << 10) || move_count  > 3-lmr_dec)) // && CheckForEndgame 
 							{
 								--new_depth;
 								++reduced;
@@ -8093,7 +8505,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 						}
 						else {
 							//pv, capture
-							if ((move_value <= 0 || move_count  > 2)&& new_depth>0) // && CheckForEndgame 
+							if ((move_value <= 0 || move_count  > 2-lmr_dec)&& new_depth>0) // && CheckForEndgame 
 							{
 								++reduced;
 								--new_depth;
@@ -8748,17 +9160,17 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		if (n != nullptr && !best_move.empty()) {
 			//			if (!(Hash == n->key)) n = nullptr;
 			//			else 
-			n->set_move(best_move, d);
-			if (!second_best_move.empty()) n->second_move = second_best_move;
+			n->set_move(best_move, d,ni);
+			if (!second_best_move.empty()) ni->second_move = second_best_move;
 		}
 		if (g == -INF) {
 #ifdef SMART_EVAL
-			if (d < 1) return (n == nullptr ? (ninpv ? -simple_eval() : -eval()) : n->get_eval(ninpv));
+			if (d < 1) return (n == nullptr ? (ninpv ? -simple_eval() : -eval()) : n->get_eval(ninpv,ni));
 #else
 #ifdef SIMPLE_EVAL
-			if (d < 1) return (n == nullptr ? simple_eval() : n->get_eval(true));
+			if (d < 1) return (n == nullptr ? simple_eval() : n->get_eval(true,ni));
 #else
-			if (d < 1) return (n == nullptr ? (ninpv ? simple_eval() : eval()) : n->get_eval(alpha == beta - 1));
+			if (d < 1) return (n == nullptr ? (ninpv ? simple_eval() : eval()) : n->get_eval(alpha == beta - 1,ni));
 #endif
 #endif
 			if (in_check) return -KING_VALUE - d - QUIESCENT_DEPTH;//includes waiting penalty
@@ -8775,7 +9187,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		if (g >= beta) {
 			//if (beta_real)
 			{
-				n->set_lower(d, g);
+				n->set_lower(d, g, ni);
 				n->lower_exact = false;
 			}
 		}
@@ -8783,16 +9195,16 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		else if (g <= alpha) {
 			//if (alpha_real) 
 			{
-				n->set_upper(d, g);
+				n->set_upper(d, g, ni);
 				n->upper_exact = false;
 			}
 		}
 		/* Found an accurate minimax value - will not occur if called with zero window */
 		else {
 			//if(alpha_real) 
-			n->set_lower(d, g);
+			n->set_lower(d, g, ni);
 			//if (beta_real) 
-			n->set_upper(d, g);
+			n->set_upper(d, g, ni);
 			//if (alpha_real && beta_real) 
 			n->upper_exact = n->lower_exact =
 #ifdef SIMPLE_EVAL
@@ -8999,9 +9411,10 @@ void think(int output)
 
 					pv[j][0].move.make();
 					inc_ply();
-					HashTableEntry *e = GetHash(false, PlySide());
+					HashTableInternalType *ei;
+					HashTableEntry *e = GetHash(false, PlySide(),ei);
 					if (e != nullptr) {
-						HashMove *m = &(e->get_move());
+						HashMove *m = &(e->get_move(ei));
 						if (!m->empty()) {
 							Move c = TestMove(PlySide(), Board[m->from], m->to, m->became);
 							if (!c.empty()) {
@@ -9889,7 +10302,7 @@ bool parse_algebraic_move(Move &m, const char *s, int &index)
 				}
 				else {
 					//assuming that 'x' is optional on a capture
-					if ((capture && MovesOrdered.back().piece_taken != NO_SLOT)||!capture) {
+					if ((capture && MovesOrdered.back().piece_taken != EMPTY)||!capture) {//{}{}{} was NO_SLOT
 						if (from_file == 0 && from_rank == 0) {
 							m = MovesOrdered.back();
 							found = true;
@@ -9974,7 +10387,7 @@ void fen_problem(const char *fen, const char *moves, const char *descr)
 	Log << "So far " << fen_correct << " out of " << fen_count << endl;
 }
 
-//#define EASY_PROBLEMS
+#define EASY_PROBLEMS
 void fen_problem_set()
 {
 	fen_count=0;
