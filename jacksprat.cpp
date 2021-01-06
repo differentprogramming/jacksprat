@@ -46,10 +46,9 @@ float ADJ[NUM_ADJ] =
 };
 
 #define NDEBUG
-#ifdef __GNUC__
-#define __min(x,y) ((x)<(y)?(x):(y))
-#define __max(x,y) ((x)>=(y)?(x):(y))
-#endif
+
+#define SIMPLE_MIN(x,y) ((x)<(y)?(x):(y))
+#define SIMPLE_MAX(x,y) ((x)>=(y)?(x):(y))
 
 //#define FAIRY
 
@@ -2016,7 +2015,7 @@ struct Move
 			if (move_flags == NotCastling) {
 				if (initial == KING_NOT_MOVED || initial == ROOK_NOT_MOVED) {
                 int pawn_count = PieceCounts[my_side][PieceCountIndex[PAWN]];
-                pawn_count = __max(__min(pawn_count,6)-1,0);
+                pawn_count = SIMPLE_MAX(SIMPLE_MIN(pawn_count,6)-1,0);
 					switch (ways_can_castle(color(Board[from]))) {
 						case 1: 
 							bonus -= (pawn_count)*4* material_threat>>10;//up to 69 
@@ -2028,12 +2027,12 @@ struct Move
 				}
 				else if (became == KING || became == KING_CASTLED) {
                    int pawn_count = PieceCounts[my_side][PieceCountIndex[PAWN]];
-                   pawn_count = __max(__min(pawn_count,6)-2,0);
+                   pawn_count = SIMPLE_MAX(SIMPLE_MIN(pawn_count,6)-2,0);
                    bonus -= pawn_count * material_threat >> 10;
                 }
 			}else if(move_flags == CastleLeft || move_flags == CastleRight){
                 int pawn_count = PieceCounts[my_side][PieceCountIndex[PAWN]];
-                pawn_count = __max(__min(pawn_count,6)-1,0);
+                pawn_count = SIMPLE_MAX(SIMPLE_MIN(pawn_count,6)-1,0);
                 bonus += (pawn_count)*4* material_threat>>10; 
             }
 		}
@@ -2897,7 +2896,7 @@ int ChebyshevDistance(Pos a, Pos b)
 {
 	const int rank_distance = abs(SquareToRowIndex[a] - SquareToRowIndex[b]);
 	const int file_distance = abs(SquareToColIndex[a] - SquareToColIndex[b]);
-	return __max(rank_distance, file_distance);
+	return SIMPLE_MAX(rank_distance, file_distance);
 }
 
 
@@ -2992,8 +2991,8 @@ void simple_calc()
 
 		//for (int j = NumPins[c] - 1;j >= 0;--j) {
 			//int temp = SEE(Players.positions[Players.pieces[Pins[c][j]]]) - (SEE(Players.positions[Players.pieces[Pinners[c][j]]])>>1);
-			//EvalTemp[c] -=// __max(temp, 0)>>3;
-			//	__max(EValuePerPiece[Players.pieces[Pins[c][j]]] - EValuePerPiece[Players.pieces[Pinners[c][j]]], 0) >> 2;
+			//EvalTemp[c] -=// SIMPLE_MAX(temp, 0)>>3;
+			//	SIMPLE_MAX(EValuePerPiece[Players.pieces[Pins[c][j]]] - EValuePerPiece[Players.pieces[Pinners[c][j]]], 0) >> 2;
 		//}
 		for (int r = KNIGHT1;r <= QUEENP;++r) {
 			if (Players.pinned[r] != NotPinned) EvalTemp[c] += .5*mobility((PieceSlotType)(r + base));
@@ -3196,8 +3195,8 @@ void calc_pawns(bool q=false)
 	double opening_multiplier = 1.0;
 	if (history_len <= 13) opening_multiplier = .4*(sqrt_table[13-history_len])+1;
 	//for (int i = LIGHT;i < NUM_COLORS;++i) 
-		MaterialMultiplier[LIGHT] = __max(1.0,MaterialSums[DARK][MAJOR_MINOR_COUNT] * (1.0/(QUEEN_VALUE+2*(KNIGHT_VALUE+BISHOP_VALUE+ROOK_VALUE))));
-		MaterialMultiplier[DARK] = __max(1.0, MaterialSums[LIGHT][MAJOR_MINOR_COUNT] * (1.0 / (QUEEN_VALUE + 2 * (KNIGHT_VALUE + BISHOP_VALUE + ROOK_VALUE))));
+		MaterialMultiplier[LIGHT] = SIMPLE_MAX(1.0,MaterialSums[DARK][MAJOR_MINOR_COUNT] * (1.0/(QUEEN_VALUE+2*(KNIGHT_VALUE+BISHOP_VALUE+ROOK_VALUE))));
+		MaterialMultiplier[DARK] = SIMPLE_MAX(1.0, MaterialSums[LIGHT][MAJOR_MINOR_COUNT] * (1.0 / (QUEEN_VALUE + 2 * (KNIGHT_VALUE + BISHOP_VALUE + ROOK_VALUE))));
 		//	PawnsDirty = true;
 	//for (int i = PAWN1;i < NUM_PIECE_SLOTS;++i) Players.pinned[i] = NotPinned;
 	EvalTemp[LIGHT] = EvalTemp[DARK] = 0;
@@ -3293,10 +3292,10 @@ void calc_pawns(bool q=false)
 						//pr is a passed pawn
 						//if king can't reach pawn, then count promotion early
 						pawn_weight[c][r] = 6;
-						if (KP_END[oc] && __min(5, pr - 1) < ChebyshevDistance(pp + 10 * (pr - 1)*(c == LIGHT ? -1 : 1), Players.positions[KINGP + other_base]) - (PlySide() == oc ? 1 : 0)){
-							int escape = (__min(4, pr - 2) << 1) + (PlySide() == oc ? 1 : 0);
+						if (KP_END[oc] && SIMPLE_MIN(5, pr - 1) < ChebyshevDistance(pp + 10 * (pr - 1)*(c == LIGHT ? -1 : 1), Players.positions[KINGP + other_base]) - (PlySide() == oc ? 1 : 0)){
+							int escape = (SIMPLE_MIN(4, pr - 2) << 1) + (PlySide() == oc ? 1 : 0);
 							if (escape<EscapedPawn) {EscapedPawn=escape; escapeColor=(Colors)c; }
-						//	PromotionTempo[(__min(4, pr - 2) << 1) + (PlySide() == oc ? 1 : 0)] = (Colors)c;//PawnsTemp[c] += QUEEN_VALUE-(82+30+90);
+						//	PromotionTempo[(SIMPLE_MIN(4, pr - 2) << 1) + (PlySide() == oc ? 1 : 0)] = (Colors)c;//PawnsTemp[c] += QUEEN_VALUE-(82+30+90);
 						}
 						PawnsTemp[c] += //pawn_tables[c][pp] + 9;//
 							.25*((7 - pr) * 40);
@@ -3371,10 +3370,8 @@ void calc_pawns(bool q=false)
 			}
 			for (Pos x = -1;x <= 1;++x) {
 				for (Pos y = ys;y <= ye;y += 10) {
-					if ((x==0 && y==0) || Board[king_pos + x + y] == EMPTY) {
-                        if (Board[king_pos + x + y] == NO_SLOT) {
-                            units += Safety((Colors)c, king_pos + x + y);
-                        }
+					if ((x==0 && y==0) || Board[king_pos + x + y] == NO_SLOT) {
+                         units += Safety((Colors)c, king_pos + x + y);                    
                     }
 				}
 			}
@@ -3451,7 +3448,7 @@ void calc_pawns(bool q=false)
 		NumPins[c] = calc_pins((Colors)c, Players.positions[KINGP + base], Pins[c], Pinners[c]);
 					   ///*		
 		for (int j = NumPins[c] - 1;j >= 0;--j) {
-			EvalTemp[c] -= __max(EValuePerPiece[Players.pieces[Pins[c][j]]] - (EValuePerPiece[Players.pieces[Pinners[c][j]]]>>1), 0) >> 3;
+			EvalTemp[c] -= SIMPLE_MAX(EValuePerPiece[Players.pieces[Pins[c][j]]] - (EValuePerPiece[Players.pieces[Pinners[c][j]]]>>1), 0) >> 3;
 		}
 		for (int r = KNIGHT1;r <= QUEENP;++r) {
 			if (Players.pinned[r] != NotPinned) 
@@ -3827,12 +3824,12 @@ inline int pawn_balance(Colors c)
 	if (d > 0) {
 		float interference = MaterialSums[other_color(c)][MAJOR_MINOR_COUNT] * (1.0 / ROOK_VALUE);
 		float help = MaterialSums[c][MAJOR_MINOR_COUNT] * (.5 / ROOK_VALUE);
-		qv = qv / interference*__min(help, interference);
+		qv = qv / interference*SIMPLE_MIN(help, interference);
 	}
 	else if (d < 0) {
 		float interference = MaterialSums[c][MAJOR_MINOR_COUNT] * (1.0 / ROOK_VALUE);
 		float help = MaterialSums[other_color(c)][MAJOR_MINOR_COUNT] * (.5 / ROOK_VALUE);
-		qv = qv / interference*__min(help, interference);
+		qv = qv / interference*SIMPLE_MIN(help, interference);
 	}
 	int nonlinear = 0;
 	if (count_slot(base + QUEENP) + count_slot(base + ROOK1) + count_slot(base + ROOK2) > 1) {
@@ -3841,7 +3838,7 @@ inline int pawn_balance(Colors c)
 	if (count_slot(other_base + QUEENP) + count_slot(other_base + ROOK1) + count_slot(other_base + ROOK2) > 1) {
 		nonlinear -= (5 * count_slot(other_base + QUEENP) + ((count_slot(other_base + ROOK1) + count_slot(other_base + ROOK2)) << 1))*PAWN_VALUE >> 5;
 	}
-	int m = __min(MaterialSums[c][PAWN_COUNT], MaterialSums[other_color(c)][PAWN_COUNT]);
+	int m = SIMPLE_MIN(MaterialSums[c][PAWN_COUNT], MaterialSums[other_color(c)][PAWN_COUNT]);
 	return pv*d + (int)qv*PbTable[m][d + 8] + (int)nonlinear;
 }
 
@@ -4431,6 +4428,8 @@ void init_board()
 	for (Pos i = a8;i <= h1;++i) if (is_piece(i)) add_value(LIGHT, Board[i]);
 }
 
+
+#ifdef _WIN32
 #include <sys/timeb.h>
 int ftime_ok;
 int millis() //needs different implementation for arduino
@@ -4441,6 +4440,17 @@ int millis() //needs different implementation for arduino
 		ftime_ok = 1;
 	return (timebuffer.time * 1000) + timebuffer.millitm;
 }
+#else
+#include <sys/time.h>
+int millis() {
+	struct timeval te;
+	gettimeofday(&te, NULL); // get current time
+	long long milliseconds = te.tv_sec * 1000LL + te.tv_usec / 1000; // calculate milliseconds
+	// printf("milliseconds: %lld\n", milliseconds);
+	return (int)milliseconds;
+}
+#endif
+
 
 int StopTime;
 int Nodes = 0;
@@ -5241,11 +5251,11 @@ int Enpassants = 0;
 		}\
 	else if (Board[root_pos+direction] != NO_SLOT && Board[root_pos+direction] != OFF_BOARD && color(Board[root_pos+direction]) != c) \
 		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]],0))) 
-
-//#define PAWNQPOINT(direction,d2) \
+/*
+#define PAWNQPOINT(direction,d2) \
 	if (Board[root_pos+direction] != NO_SLOT && Board[root_pos+direction] != OFF_BOARD && color(Board[root_pos+direction]) != c) \
 		CAPTURE_VALUATION((root_pos,root_pos+direction ATLINE),(CAP_SCALE(ValuePerPiece[Players.pieces[Board[root_pos+direction]]])-value)) 
-
+*/
 #define TPAWNQPOINT(direction) \
 	if (target == root_pos+direction){ \
 		enpassant_pos = enpassant_table[root_pos+direction];\
@@ -7874,8 +7884,8 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				}
 			}
 //			if (CurrentPly != 1) {
-//				alpha = __max(alpha, lower);
-//				beta = __min(beta, upper);
+//				alpha = SIMPLE_MAX(alpha, lower);
+//				beta = SIMPLE_MIN(beta, upper);
 //			}
 		}
 		else if (CurrentPly == 1) m2 = pv[0][0].move;
@@ -7918,7 +7928,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 
 		if (last_piece_moved != OFF_BOARD) val = val;// -SEE(Players.positions[last_piece_moved]);
 		int lower_val = (n == nullptr ? val : (n->get_lower(-QUIESCENT_DEPTH,ni) == -INF ? val : n->get_lower(-QUIESCENT_DEPTH, ni)));
-		lower_val = __max(lower_val, val);
+		lower_val = SIMPLE_MAX(lower_val, val);
 		//		const bool in_check = king_in_check(PlySide());
 
 		bool in_end = SideInEndgame_for_null(my_color);
@@ -7960,7 +7970,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 //			if (d <= 0){
 //				int BIG_DELTA = QUEEN_VALUE;
 //				int upper_val = (n == nullptr ? val : (n->get_upper(-QUIESCENT_DEPTH) == INF ? val : n->get_upper(-QUIESCENT_DEPTH)));
-//				upper_val = __min(upper_val, val);
+//				upper_val = SIMPLE_MIN(upper_val, val);
 			//if ( isPromotingPawn() ) BIG_DELTA += (int)(QUEEN_VALUE*.8);
 //				if ( upper_val < alpha - BIG_DELTA ) {
 //					--MidNodes;
@@ -8055,9 +8065,9 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 			int new_value;
 			int new_depth;
 			try {
-				//new_depth = __min(2, __max(d - 4, 1));//
+				//new_depth = SIMPLE_MIN(2, SIMPLE_MAX(d - 4, 1));//
 				//new_depth = a__max(d - 3, 1);//
-				new_depth = __max((d - 1) >> 1, 1);
+				new_depth = SIMPLE_MAX((d - 1) >> 1, 1);
 				new_value = repeat_mask(-NegaScout(false, verify, -beta, -beta + 1, new_depth, false, somewhere_in_null, -alpha, EmptyMove, false, new_depth, INF));
 			}
 			catch (OutOfTimeException) {
@@ -8069,9 +8079,9 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				if (!verify || InIID //|| (zero&& !in_end)
 					) {//|| !SideInEndgame_for_null(my_color)) 
 					//if (!zero && d>0) pv_length[CurrentPly - 1] = CurrentPly - 2;
-					return __max(beta, new_value);
+					return SIMPLE_MAX(beta, new_value);
 				}
-				if (!in_end) verify_inc = d - __max(d - 3, 1);
+				if (!in_end) verify_inc = d - SIMPLE_MAX(d - 3, 1);
 				fail_high = true;
 				d -= verify_inc;
 				verify = false;
@@ -8094,7 +8104,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 
 		MoveGenerator &moves = MoveGenerators[CurrentPly - 1];
 		/*
-				moves.init(verify_pass,d//in_check ? (__max(1, d)) : d
+				moves.init(verify_pass,d//in_check ? (SIMPLE_MAX(1, d)) : d
 					, m2, m3, last_move, val,
 		#ifdef MAXIMUM_IID
 					true
@@ -8105,7 +8115,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		const bool deeper = ((!zero) && d > 4)&&  d>MinDepth>>1;//
 		//((!zero) && d > 4) &&CurrentPly<6 && CurrentPly != 1 && (CurrentPly & 3) == (1 | ((~MinDepth) & 2));//&& (CurrentPly == ((MinDepth * 340 >> 10) | 1) || CurrentPly == ((MinDepth * 680 >> 10) | 1));
 //#define NO_IID
-		moves.init(verify_pass, d//in_check ? (__max(1, d)) : d
+		moves.init(verify_pass, d//in_check ? (SIMPLE_MAX(1, d)) : d
 			, m2, m3, last_move, val,
 #ifdef NO_IID
 			false
@@ -8143,7 +8153,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 			moves.EnableHistory = true;
 		}
 		if (d <= 0) {
-			g = val; a = __max(alpha, lower_val);
+			g = val; a = SIMPLE_MAX(alpha, lower_val);
 		}
 		else {
 			g = -INF;
@@ -8155,7 +8165,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 		int reduced = 0;
 		int *iid_value;
 		MovesIID.inc_ply();
-
+		bool repeat;
 		bool in_endgame = SideInEndgame(my_color);
 		double sum_above_alpha = 0;
 		double sum_above_inc = 7;
@@ -8265,7 +8275,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 													pv[CurrentPly - 2][CurrentPly - 2].value = g;
 													if (d > 1) {
 														for (int i = CurrentPly - 1;i <= pv_length[CurrentPly - 1];++i)pv[i][CurrentPly - 2] = pv[i][CurrentPly - 1];
-														pv_length[CurrentPly - 2] = __max(CurrentPly - 1, pv_length[CurrentPly - 1]);
+														pv_length[CurrentPly - 2] = SIMPLE_MAX(CurrentPly - 1, pv_length[CurrentPly - 1]);
 													}
 													else pv_length[CurrentPly - 2] = CurrentPly - 1;
 												}
@@ -8280,7 +8290,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 										}
 									}
 									//	InIID = true;
-								//	val1 = __max(val1, val2);
+								//	val1 = SIMPLE_MAX(val1, val2);
 								}
 #else
 //								if (!r && val2 > beta && val2 != fv) {
@@ -8351,7 +8361,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 //			else 
 /*
 				if (//d <= 4 &&           //leaves
-					d<__min(MinDepth >> 1, MinDepth - 5))
+					d<SIMPLE_MIN(MinDepth >> 1, MinDepth - 5))
 					//					d<LMR_THIN_THRESHOLD)
 					//|| d<MinDepth - 7
 				{
@@ -8524,7 +8534,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 #ifdef DELTA_PRUNING
 				if ((d <= 0 //|| (!other_in_check && new_depth <= 2 && (CurrentPly & 1) == 1)//delta
 					)
-					&& (move_value >> 9) < __max(0, a - val - 30)) {
+					&& (move_value >> 9) < SIMPLE_MAX(0, a - val - 30)) {
 					inc_ply();
 					val1 = val + (move_value >> 10);
 					goto register_move;
@@ -8570,7 +8580,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				//	new_depth = d - 2;
 				//}
 
-				bool repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
+				repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
 				inc_ply();
 				try {
 
@@ -8618,7 +8628,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 #endif
 #else
 				bool wasIID = InIID;
-				bool repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
+				repeat = !somewhere_in_null && RepeatList.count(my_color) >= 3;
 				inc_ply();
 				try {
 #endif
@@ -8777,13 +8787,13 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 						val1 = -NegaScout(n_inpv, verify, -(firstguess+1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
 						if (val1<firstguess) {
 						do {
-						firstguess = __min(val1,firstguess);
+						firstguess = SIMPLE_MIN(val1,firstguess);
 						val1 = -NegaScout(n_inpv, verify, -(firstguess + 1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
 						} while (val1 < firstguess);
 						}
 						else {
 						do {
-						firstguess = __max(val1,firstguess);
+						firstguess = SIMPLE_MAX(val1,firstguess);
 						val1 = -NegaScout(n_inpv, verify, -(firstguess + 1), -firstguess, new_depth, false, somewhere_in_null, false, false, r,other_in_check,realdepth-1);
 						} while (val1 >= firstguess);
 						}
@@ -8979,7 +8989,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 						pv[CurrentPly - 2][CurrentPly - 2].value = g;
 						if (d > 1) {
 							for (int i = CurrentPly - 1;i <= pv_length[CurrentPly - 1];++i)pv[i][CurrentPly - 2] = pv[i][CurrentPly - 1];
-							pv_length[CurrentPly - 2] = __max(CurrentPly - 1, pv_length[CurrentPly - 1]);
+							pv_length[CurrentPly - 2] = SIMPLE_MAX(CurrentPly - 1, pv_length[CurrentPly - 1]);
 						}
 						else pv_length[CurrentPly - 2] = CurrentPly - 1;
 					}
@@ -8994,7 +9004,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 				InIID = wasIID;
 				dec_ply();
 				c.unmake();
-				//if (d <= 0 && move_count>__max(((2+(d>>1))<<1)+1,0)) break;
+				//if (d <= 0 && move_count>SIMPLE_MAX(((2+(d>>1))<<1)+1,0)) break;
 			}
 
 			if (g >= beta && 
@@ -9062,7 +9072,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 						pv[CurrentPly - 1][CurrentPly - 1].value = g;
 						if (d > 1) {
 							for (int i = CurrentPly;i <= pv_length[CurrentPly];++i)pv[i][CurrentPly - 1] = pv[i][CurrentPly];
-							pv_length[CurrentPly - 1] = __max(CurrentPly, pv_length[CurrentPly]);
+							pv_length[CurrentPly - 1] = SIMPLE_MAX(CurrentPly, pv_length[CurrentPly]);
 						}
 						else pv_length[CurrentPly - 1] = CurrentPly;
 					}
@@ -9105,7 +9115,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 			//g -= g >> 5;
 			if (d>0 //&& g < beta// && (CurrentPly&1)!=0
 				) {
-				//g = __min(beta_real-1,g + (sum_above_alpha*inv_sqrt_table[d]));
+				//g = SIMPLE_MIN(beta_real-1,g + (sum_above_alpha*inv_sqrt_table[d]));
 				//if (second_best_value != -INF) g += (second_best_value * 0.03+ sum_above_alpha)*inv_sqrt_table[d];
 				//else 
 					g = g + sum_above_alpha *inv_sqrt_table[d];
@@ -9222,7 +9232,7 @@ int NegaScout(bool in_pv, bool verify, int alpha, int beta, int d, bool late, bo
 
 int MTDF(int g, int d)
 {
-	//LMR_THIN_THRESHOLD = __max(MinDepth / 3, MinDepth - 5);
+	//LMR_THIN_THRESHOLD = SIMPLE_MAX(MinDepth / 3, MinDepth - 5);
 	InIID = false;
 	Smart = false;
 	const bool other_in_check = king_in_check(PlySide());
@@ -9375,7 +9385,7 @@ void think(int output)
 	//	memset(history, 0, sizeof(history));
 	if (output == 1)
 		printf("ply      nodes  score  pv\n");
-	for (i = 1; i <= __min(MaxDepth, MAX_PLY - 21); ++i) {
+	for (i = 1; i <= SIMPLE_MIN(MaxDepth, MAX_PLY - 21); ++i) {
 		//		if (i == 5)USE_TT = true;
 
 		//if (i < 6) QUIESCENT_DEPTH = 5;//5;
@@ -10032,6 +10042,7 @@ PieceSlotType next_fen_piece(char f)
 		find_fen_piece(p, KINGP + base, KING);
 		return p;
 	}
+	throw(BadFen());
 }
 
 Pos next_fen_pos(Pos p)
